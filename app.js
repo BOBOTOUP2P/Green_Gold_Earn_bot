@@ -180,15 +180,15 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     const statusLower = (item.status || '').toLowerCase();
     const existing = newInterests[item.id];
 
-    if (statusLower === 'done') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
+    if (statusLower === 'done' || statusLower === 'cashed_out') {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== statusLower) {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
           rate: item.rate || '+0.00%',
           amount: item.amount || '+0.00 USD',
           balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
-          status: 'done'
+          status: statusLower
         };
         newInterests[item.id] = intData;
         await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
@@ -211,32 +211,11 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     }
   }
 
-  // បូកសរុបការប្រាក់ទាំងអស់ដែលជា 'done' ដោយផ្ទាល់
-  let totalIntVal = 0;
-  let totalRateVal = 0;
-  Object.values(newInterests).forEach(it => {
-    if ((it.status || '').toLowerCase() === 'done') {
-      totalIntVal += parseFloat((it.amount || '0').replace(/[^0-9.]/g, '')) || 0;
-      totalRateVal += parseFloat((it.rate || '0').replace(/[^0-9.]/g, '')) || 0;
-    }
-  });
-
-  let finalRate = "+" + totalRateVal.toFixed(2) + "%";
+  // ទទួលយកតម្លៃពិតជាក់ស្ដែងនៃការប្រាក់សរុបចេញពីក្បាលតារាង Google Sheet (មិនបូកបញ្ច្រាសឡើយ)
+  let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
+  let finalRate = totalRateSummary || "+0.00%";
 
   currentUser.totalInterestVal = totalIntVal;
-
-  const calculatedBalance = (currentUser.baseBalance || 0.00) + totalIntVal;
-  if (Math.abs(currentUser.balance - calculatedBalance) > 0.001) {
-    currentUser.balance = calculatedBalance;
-    checkAndUpdateMaxPeak(currentUser.balance);
-    await update(ref(db, `users/${currentUser.uid}`), { 
-      balance: currentUser.balance, 
-      totalInterestVal: currentUser.totalInterestVal 
-    });
-    const balVal = document.getElementById('balanceVal');
-    if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
-    pushRealtimeBalanceToSheet(currentUser.balance);
-  }
 
   setPigBellyDisplay(totalIntVal.toFixed(2), finalRate);
   
@@ -579,6 +558,7 @@ async function syncUserToDatabase() {
         totalDeposits: 0,
         baseBalance: 0.00,
         balance: 0.00,
+        totalInterestVal: 0.00,
         maxPeak: 0.00,
         transactions: {},
         interests: {},
@@ -589,8 +569,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
+      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
@@ -617,8 +597,8 @@ function updateUIFromData(data) {
   if (!data) return;
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
+  currentUser.balance = data.balance !== undefined ? Number(data.balance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-  currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
   currentUser.interests = data.interests || {};
