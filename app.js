@@ -181,7 +181,7 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     const existing = newInterests[item.id];
 
     if (statusLower === 'done') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate) {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
@@ -211,11 +211,17 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     }
   }
 
-  let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
-  if (currentUser.adminOverrideInt !== undefined) {
-    totalIntVal = currentUser.adminOverrideInt;
-  }
-  let finalRate = totalRateSummary || "+0.00%";
+  // បូកសរុបការប្រាក់ទាំងអស់ដែលជា 'done' ដោយផ្ទាល់
+  let totalIntVal = 0;
+  let totalRateVal = 0;
+  Object.values(newInterests).forEach(it => {
+    if ((it.status || '').toLowerCase() === 'done') {
+      totalIntVal += parseFloat((it.amount || '0').replace(/[^0-9.]/g, '')) || 0;
+      totalRateVal += parseFloat((it.rate || '0').replace(/[^0-9.]/g, '')) || 0;
+    }
+  });
+
+  let finalRate = "+" + totalRateVal.toFixed(2) + "%";
 
   currentUser.totalInterestVal = totalIntVal;
 
@@ -223,7 +229,10 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
   if (Math.abs(currentUser.balance - calculatedBalance) > 0.001) {
     currentUser.balance = calculatedBalance;
     checkAndUpdateMaxPeak(currentUser.balance);
-    await update(ref(db, `users/${currentUser.uid}`), { balance: currentUser.balance, totalInterestVal: currentUser.totalInterestVal });
+    await update(ref(db, `users/${currentUser.uid}`), { 
+      balance: currentUser.balance, 
+      totalInterestVal: currentUser.totalInterestVal 
+    });
     const balVal = document.getElementById('balanceVal');
     if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
     pushRealtimeBalanceToSheet(currentUser.balance);
@@ -581,7 +590,6 @@ async function syncUserToDatabase() {
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-      currentUser.adminOverrideInt = data.adminOverrideInt;
       currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
@@ -610,7 +618,6 @@ function updateUIFromData(data) {
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-  currentUser.adminOverrideInt = data.adminOverrideInt;
   currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
