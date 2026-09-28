@@ -175,28 +175,31 @@ async function checkAndSyncSheetTransaction(sheetTxn) {
 async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSummary) {
   let isChanged = false;
   let newInterests = { ...(currentUser.interests || {}) };
-  let currentKeys = Object.keys(newInterests);
-
-  for (let key of currentKeys) {
-    const sItem = sheetInterests.find(i => i.id === key);
-    if (!sItem || (sItem.status && sItem.status.toLowerCase() === 'delete')) {
-      delete newInterests[key];
-      await remove(ref(db, `users/${currentUser.uid}/interests/${key}`));
-      isChanged = true;
-    }
-  }
 
   for (let item of sheetInterests) {
     const statusLower = (item.status || '').toLowerCase();
-    if (statusLower === 'done') {
-      const existing = newInterests[item.id];
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate) {
+    const existing = newInterests[item.id];
+    const valAmt = parseFloat((item.amount || '0').replace(/[^0-9.]/g, '')) || 0;
+
+    if (statusLower === 'delete') {
+      if (existing && existing.status !== 'delete') {
+        currentUser.maxPeak = Math.max(0, (currentUser.maxPeak || 0.00) - valAmt);
+        existing.status = 'delete';
+        await update(ref(db, `users/${currentUser.uid}/interests/${item.id}`), { status: 'delete' });
+        await update(ref(db, `users/${currentUser.uid}`), { maxPeak: currentUser.maxPeak });
+        const maxEl = document.getElementById('maxDepositText');
+        if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
+        isChanged = true;
+      }
+    } else if (statusLower === 'done') {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
           rate: item.rate || '+0.00%',
           amount: item.amount || '+0.00 USD',
-          balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD')
+          balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
+          status: 'done'
         };
         newInterests[item.id] = intData;
         await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
@@ -522,12 +525,20 @@ function renderInterests(interests) {
 
   let html = '';
   Object.values(interests).forEach(it => {
+    const isDelete = (it.status || '').toLowerCase() === 'delete';
+    const amountColor = isDelete ? '#ef4444' : '#22c55e';
+    const rateColor = isDelete ? '#ef4444' : '#22c55e';
+    const barColor = isDelete ? '#ef4444' : '#22c55e';
+
     html += `
-      <div class="interest-card" onclick="openInterestDetailModal({id:'${it.id}', date:'${it.date}', rate:'${it.rate}', amount:'${it.amount}', balance:'${it.balance || '0.00 USD'}'})">
+      <div class="interest-card" style="${isDelete ? 'opacity: 0.7;' : ''}" onclick="openInterestDetailModal({id:'${it.id}', date:'${it.date}', rate:'${it.rate}', amount:'${it.amount}', balance:'${it.balance || '0.00 USD'}', status:'${it.status}'})">
+        <style>
+          .interest-card[data-intid="${it.id}"]::before { background-color: ${barColor} !important; box-shadow: 0 0 8px ${barColor} !important; }
+        </style>
         <div class="trans-left">
           <div class="interest-icon-box">
-            <div class="flying-arrow-3d">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;">
+            <div class="flying-arrow-3d" style="color: ${amountColor};">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;">
                 <line x1="12" y1="19" x2="12" y2="5"></line>
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
@@ -539,8 +550,8 @@ function renderInterests(interests) {
           </div>
         </div>
         <div class="trans-right">
-          <div class="trans-amount" style="color:#22c55e;">${it.amount}</div>
-          <div class="trans-status" style="color:#22c55e; font-size:13px; font-weight:700;">${it.rate}</div>
+          <div class="trans-amount" style="color:${amountColor};">${it.amount}</div>
+          <div class="trans-status" style="color:${rateColor}; font-size:13px; font-weight:700;">${isDelete ? 'Delete' : it.rate}</div>
         </div>
       </div>
     `;
