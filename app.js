@@ -179,20 +179,9 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
   for (let item of sheetInterests) {
     const statusLower = (item.status || '').toLowerCase();
     const existing = newInterests[item.id];
-    const valAmt = parseFloat((item.amount || '0').replace(/[^0-9.]/g, '')) || 0;
 
-    if (statusLower === 'delete') {
-      if (existing && existing.status !== 'delete') {
-        currentUser.maxPeak = Math.max(0, (currentUser.maxPeak || 0.00) - valAmt);
-        existing.status = 'delete';
-        await update(ref(db, `users/${currentUser.uid}/interests/${item.id}`), { status: 'delete' });
-        await update(ref(db, `users/${currentUser.uid}`), { maxPeak: currentUser.maxPeak });
-        const maxEl = document.getElementById('maxDepositText');
-        if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
-        isChanged = true;
-      }
-    } else if (statusLower === 'done') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
+    if (statusLower === 'done') {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate) {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
@@ -205,10 +194,27 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
         await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
         isChanged = true;
       }
+    } else if (statusLower === 'delete') {
+      if (!existing || existing.status !== 'delete') {
+        const intData = {
+          id: item.id,
+          date: existing ? existing.date : (item.date || getFormattedDateTime()),
+          rate: item.rate || '+0.00%',
+          amount: item.amount || '+0.00 USD',
+          balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
+          status: 'delete'
+        };
+        newInterests[item.id] = intData;
+        await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
+        isChanged = true;
+      }
     }
   }
 
   let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
+  if (currentUser.adminOverrideInt !== undefined) {
+    totalIntVal = currentUser.adminOverrideInt;
+  }
   let finalRate = totalRateSummary || "+0.00%";
 
   currentUser.totalInterestVal = totalIntVal;
@@ -526,19 +532,12 @@ function renderInterests(interests) {
   let html = '';
   Object.values(interests).forEach(it => {
     const isDelete = (it.status || '').toLowerCase() === 'delete';
-    const amountColor = isDelete ? '#ef4444' : '#22c55e';
-    const rateColor = isDelete ? '#ef4444' : '#22c55e';
-    const barColor = isDelete ? '#ef4444' : '#22c55e';
-
     html += `
-      <div class="interest-card" style="${isDelete ? 'opacity: 0.7;' : ''}" onclick="openInterestDetailModal({id:'${it.id}', date:'${it.date}', rate:'${it.rate}', amount:'${it.amount}', balance:'${it.balance || '0.00 USD'}', status:'${it.status}'})">
-        <style>
-          .interest-card[data-intid="${it.id}"]::before { background-color: ${barColor} !important; box-shadow: 0 0 8px ${barColor} !important; }
-        </style>
+      <div class="interest-card" style="${isDelete ? 'opacity: 0.6; filter: grayscale(0.5);' : ''}" onclick="openInterestDetailModal({id:'${it.id}', date:'${it.date}', rate:'${it.rate}', amount:'${it.amount}', balance:'${it.balance || '0.00 USD'}'})">
         <div class="trans-left">
           <div class="interest-icon-box">
-            <div class="flying-arrow-3d" style="color: ${amountColor};">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;">
+            <div class="flying-arrow-3d">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${isDelete ? '#94a3b8' : '#ffffff'}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;">
                 <line x1="12" y1="19" x2="12" y2="5"></line>
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
@@ -550,8 +549,8 @@ function renderInterests(interests) {
           </div>
         </div>
         <div class="trans-right">
-          <div class="trans-amount" style="color:${amountColor};">${it.amount}</div>
-          <div class="trans-status" style="color:${rateColor}; font-size:13px; font-weight:700;">${isDelete ? 'Delete' : it.rate}</div>
+          <div class="trans-amount" style="color:${isDelete ? '#ef4444' : '#22c55e'};">${it.amount}</div>
+          <div class="trans-status" style="color:${isDelete ? '#ef4444' : '#22c55e'}; font-size:13px; font-weight:700;">${isDelete ? 'Delete' : it.rate}</div>
         </div>
       </div>
     `;
@@ -582,6 +581,7 @@ async function syncUserToDatabase() {
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+      currentUser.adminOverrideInt = data.adminOverrideInt;
       currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
@@ -610,6 +610,7 @@ function updateUIFromData(data) {
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+  currentUser.adminOverrideInt = data.adminOverrideInt;
   currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
