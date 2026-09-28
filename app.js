@@ -124,7 +124,9 @@ async function checkAndSyncSheetTransaction(sheetTxn) {
       await update(txnRef, { status: 'done' });
       currentUser.totalDeposits = (currentUser.totalDeposits || 0) + 1;
       currentUser.baseBalance = (currentUser.baseBalance || 0.00) + val;
-      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0);
+      
+      // បូកបញ្ចូលគ្នា៖ ប្រាក់ដើម + ការប្រាក់សរុបក្នុងកូនជ្រូក
+      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0.00);
 
       if (currentUser.balance > (currentUser.maxPeak || 0.00)) {
         currentUser.maxPeak = currentUser.balance;
@@ -151,7 +153,7 @@ async function checkAndSyncSheetTransaction(sheetTxn) {
       await update(txnRef, { status: 'refuse' });
       currentUser.totalDeposits = Math.max(0, (currentUser.totalDeposits || 1) - 1);
       currentUser.baseBalance = Math.max(0, (currentUser.baseBalance || 0.00) - val);
-      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0);
+      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0.00);
 
       currentUser.maxPeak = Math.max(0, (currentUser.maxPeak || 0.00) - val);
 
@@ -211,11 +213,26 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     }
   }
 
-  // ទទួលយកតម្លៃពិតជាក់ស្ដែងនៃការប្រាក់សរុបចេញពីក្បាលតារាង Google Sheet (មិនបូកបញ្ច្រាសឡើយ)
+  // ចាប់យកតម្លៃការប្រាក់សរុបចេញពីកូនជ្រូក (Header Google Sheet) មកបូកចូលសមតុល្យគណនី
   let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
   let finalRate = totalRateSummary || "+0.00%";
 
   currentUser.totalInterestVal = totalIntVal;
+
+  // រូបមន្តបូកបញ្ចូលគ្នាពិតប្រាកដ៖ សមតុល្យ = ប្រាក់ដើម (baseBalance) + ការប្រាក់កូនជ្រូក (totalInterestVal)
+  const newCalculatedBalance = (currentUser.baseBalance || 0.00) + totalIntVal;
+
+  if (Math.abs(currentUser.balance - newCalculatedBalance) > 0.001) {
+    currentUser.balance = newCalculatedBalance;
+    checkAndUpdateMaxPeak(currentUser.balance);
+    await update(ref(db, `users/${currentUser.uid}`), { 
+      balance: currentUser.balance, 
+      totalInterestVal: currentUser.totalInterestVal 
+    });
+    const balVal = document.getElementById('balanceVal');
+    if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
+    pushRealtimeBalanceToSheet(currentUser.balance);
+  }
 
   setPigBellyDisplay(totalIntVal.toFixed(2), finalRate);
   
@@ -302,7 +319,7 @@ let currentUser = {
   photo: "",
   totalDeposits: 0,
   baseBalance: 0.00,
-  totalInterestVal: 0,
+  totalInterestVal: 0.00,
   balance: 0.00,
   maxPeak: 0.00,
   transactions: {},
@@ -569,8 +586,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
@@ -597,8 +614,8 @@ function updateUIFromData(data) {
   if (!data) return;
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-  currentUser.balance = data.balance !== undefined ? Number(data.balance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+  currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
   currentUser.interests = data.interests || {};
