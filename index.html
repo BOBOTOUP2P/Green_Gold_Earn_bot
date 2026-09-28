@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>កាបូបឌីជីថល KBK Wallet</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="splashScreen">
+  <svg class="piggy-svg" viewBox="0 0 280 280">
+    <defs>
+      <linearGradient id="darkCoinGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#272731"/><stop offset="60%" stop-color="#18181f"/><stop offset="100%" stop-color="#0f0f14"/></linearGradient>
+      <linearGradient id="pigDarkGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="60%" stop-color="#121217"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient>
+      <linearGradient id="pigBackLegGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#121217"/><stop offset="100%" stop-color="#08080a"/></linearGradient>
+    </defs>
+    <ellipse cx="140" cy="245" rx="90" ry="16" fill="rgba(56, 189, 248, 0.1)" />
+    <g class="coin-drop-loop">
+      <circle cx="142" cy="107" r="30" fill="#0b0b0e" stroke="#71717a" stroke-width="1.8" />
+      <circle cx="138" cy="103" r="30" fill="url(#darkCoinGrad)" stroke="#71717a" stroke-width="2.2" />
+      <circle cx="138" cy="103" r="23" fill="none" stroke="#71717a" stroke-width="1.5" stroke-dasharray="3,2" />
+      <text x="137" y="113" font-size="28" font-weight="900" font-family="Arial" fill="#d1d1d6" text-anchor="middle">$</text>
+    </g>
+    <g class="pig-shake">
+      <path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round"/>
+      <rect x="75" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art" />
+      <rect x="175" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art" />
+      <ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigDarkGrad)" class="line-art" />
+      <path d="M 80 135 C 105 118, 150 118, 175 128" class="highlight-line" />
+      <rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art" />
+      <rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art" />
+      <path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigDarkGrad)" class="line-art" />
+      <path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigDarkGrad)" class="line-art" />
+      <path d="M 166 107 C 170 88, 188 92, 182 110 Z" fill="#252530" opacity="0.6"/>
+      <ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#71717a" stroke-width="1.8" />
+      <circle cx="175" cy="150" r="5" fill="#d1d1d6" />
+      <circle cx="174" cy="148" r="1.5" fill="#000000" />
+      <circle cx="205" cy="147" r="5" fill="#d1d1d6" />
+      <circle cx="204" cy="145" r="1.5" fill="#000000" />
+      <ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigDarkGrad)" class="line-art" />
+      <ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#71717a" />
+      <ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#71717a" />
+    </g>
+  </svg>
+  <div class="splash-counter">ប្រាក់សន្សំ និង ការប្រាក់</div>
+  <div class="horizontal-line"></div>
+  <div class="progress-section">
+    <div class="percentage-text" id="percentText">0%</div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<div id="profileModal" class="profile-modal" onclick="closeProfileModal()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close-btn" onclick="closeProfileModal()"><i data-lucide="x" style="width: 18px; height: 18px;"></i></button>
+    <div class="modal-avatar-wrapper" id="modalAvatar" onclick="toggleAvatarShape()" title="ចុចដើម្បីមើលរូបភាពជ្រុងពេញលេញ">
+      <i data-lucide="user" style="width: 60px; height: 60px; color: #ffffff;"></i>
+    </div>
+    <div class="modal-user-name" id="modalName">(…)</div>
+    <div class="modal-user-uid" id="modalUid">UID: ...</div>
+  </div>
+</div>
+
+<div id="bankModal" class="bank-modal" onclick="closeBankModal()">
+  <div class="bank-sheet" onclick="event.stopPropagation()">
+    <div class="bank-sheet-header">
+      <div class="bank-sheet-title">ជ្រើសរើសធនាគារ</div>
+      <button class="bank-sheet-close" onclick="closeBankModal()"><i data-lucide="x" style="width: 16px; height: 16px;"></i></button>
+    </div>
+    <div class="bank-item" onclick="selectBank('ABA Bank')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/TDXnTQ01/IMG-3152.png" alt="ABA Bank"></div><span>ABA Bank</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('ACLEDA Bank')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/nqn8K7Mr/IMG-3153.png" alt="ACLEDA Bank"></div><span>ACLEDA Bank</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('Wing Bank')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/G3FtMhM2/IMG-3154.png" alt="Wing Bank"></div><span>Wing Bank</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('True Money')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/QvLt2MyK/IMG-3155.jpg" alt="True Money"></div><span>True Money</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('Amret')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/QvgwD59n/IMG-3156.png" alt="Amret"></div><span>Amret</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('Woori Bank')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/r2bBQWtr/IMG-3157.png" alt="Woori Bank"></div><span>Woori Bank</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('MB Cambodia')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/NnF4S5hV/IMG-3158.png" alt="MB Cambodia"></div><span>MB Cambodia</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+    <div class="bank-item" onclick="selectBank('KB PRASAC')"><div class="bank-item-left"><div class="bank-logo-badge"><img src="https://i.ibb.co/933n14L9/IMG-3159.png" alt="KB PRASAC"></div><span>KB PRASAC</span></div><i data-lucide="chevron-right" style="width: 18px; height: 18px; color: #71717a;"></i></div>
+  </div>
+</div>
+
+<div id="transDetailModal" class="detail-modal" onclick="closeTransDetailModal()">
+  <div class="detail-card" onclick="event.stopPropagation()">
+    <div class="detail-header-title">ព័ត៌មានលម្អិតប្រតិបត្តិការ</div>
+    <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (ID):</span><span class="detail-row-val" id="dtlTxnID">TXN-000000</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">ឈ្មោះអាខោន:</span><span class="detail-row-val" id="dtlAccountName">(…)</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (UID):</span><span class="detail-row-val" id="dtlUID">...</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">វិធីបង់ប្រាក់:</span><span class="detail-row-val" id="dtlBank" style="color: #00bcd4;">KHQR</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">ឈ្មោះគណនីរបស់អ្នក:</span><span class="detail-row-val" id="dtlSenderName">...</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">កាលបរិច្ឆេទ:</span><span class="detail-row-val" id="dtlDate">--/--/---- --:--</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">ចំនួនទឹកប្រាក់:</span><span class="detail-row-val" id="dtlAmount" style="color: #00d2d3; font-size: 15px;">+0.00 USD</span></div>
+    <button class="detail-close-btn" onclick="closeTransDetailModal()">បិទ</button>
+  </div>
+</div>
+
+<div id="interestDetailModal" class="detail-modal" onclick="closeInterestDetailModal()">
+  <div class="detail-card" onclick="event.stopPropagation()">
+    <div class="detail-header-title" style="color: #22c55e;">ព័ត៌មានលម្អិតនៃការប្រាក់</div>
+    <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (ID):</span><span class="detail-row-val" id="dtlIntID">INT-000001</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">ឈ្មោះអាខោន:</span><span class="detail-row-val" id="dtlIntName">(…)</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (UID):</span><span class="detail-row-val" id="dtlIntUID">...</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">កាលបរិច្ឆេទ:</span><span class="detail-row-val" id="dtlIntDate">--/--/---- --:--</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">សមតុល្យគណនី:</span><span class="detail-row-val" id="dtlIntBalance">0.00 USD</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">គិតជាភាគរយ:</span><span class="detail-row-val" id="dtlIntRate" style="color: #22c55e;">+0.00%</span></div>
+    <div class="detail-row"><span class="detail-row-lbl">ការប្រាក់ទទួលបាន:</span><span class="detail-row-val" id="dtlIntAmount" style="color: #22c55e; font-size: 15px;">+0.00 USD</span></div>
+    <button class="detail-close-btn" onclick="closeInterestDetailModal()">បិទ</button>
+  </div>
+</div>
+
+<div class="app-container">
+  
+  <div class="page-view home-content active" id="pageHome">
+    <div id="homeProfileSection">
+      <div class="account-avatar-lg" id="homeAvatar"><i data-lucide="user"></i></div>
+      <div class="account-name-lg" id="homeName">(…)</div>
+      <div class="account-uid-lg"><span id="homeUID">UID: កំពុងផ្ទុក...</span></div>
+    </div>
+    <div class="home-table-card">
+      <div class="table-row table-header">
+        <div class="col-name header-col-name">
+          <span>0. ឈ្មោះ</span>
+          <button id="btnViewAll" class="view-all-btn" onclick="toggleTableFullscreen()">
+            <span id="viewAllText">មើលទាំងអស់</span>
+            <span id="fullscreenIcon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            </span>
+          </button>
+        </div>
+        <div class="col-uid">UID</div>
+        <div class="col-count">ដាក់ប្រាក់ចំនួនដង</div>
+      </div>
+      <div id="homeTableList">
+        <div class="table-row table-body">
+          <div class="col-name">
+            <span>1.</span>
+            <span class="mini-profile-avatar" id="myRowAvatar"><i data-lucide="user"></i></span>
+            <span class="name-text" id="myRowName">(…)</span>
+          </div>
+          <div class="col-uid" id="myRowUID">...</div>
+          <div class="col-count" id="myRowCount">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageAssets">
+    <div class="assets-carousel-wrapper">
+      <div class="assets-carousel-track" id="assetsTrack">
+        <div class="assets-slide">
+          <div class="wallet-wrapper">
+            <div class="wallet-container" id="wallet">
+              <div class="bill bill-2" onclick="event.stopPropagation(); openInterestPage();">
+                <span class="bill-text"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg><span id="walletBillRate2">+0.00%</span></span>
+                <div class="bill-symbol">$</div>
+              </div>
+              <div class="bill bill-1" onclick="event.stopPropagation(); openInterestPage();">
+                <span class="bill-text"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg><span id="walletBillRate1">+0.00%</span></span>
+                <div class="bill-symbol">$</div>
+              </div>
+              <div class="coin" onclick="event.stopPropagation(); openHistoryPage();" title="ប្រវត្តិប្រតិបត្តិការ">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+              </div>
+              <div class="wallet-back"></div>
+              <div class="wallet-body">
+                <div class="wallet-label-row">
+                  <span>សមតុល្យគណនី</span>
+                  <button class="wallet-eye-btn" onclick="event.stopPropagation(); toggleBalance();" title="បិទ/បើកមើលលុយ">
+                    <svg id="eyeSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <div class="wallet-amount" id="balanceNum">
+                  <span class="wallet-val" id="balanceVal">0.00</span>
+                  <span class="wallet-cur">USD</span>
+                </div>
+                <div class="wallet-deposit-tag" onclick="event.stopPropagation(); openDepositPage();">
+                  <i data-lucide="arrow-down"></i>
+                  <span>ដាក់ប្រាក់</span>
+                </div>
+              </div>
+              <div class="wallet-flap"><div class="wallet-button"></div></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="assets-slide">
+          <div class="pig-card-wrapper" onclick="event.stopPropagation(); openInterestPage();">
+            <div class="pig-card-container">
+              <svg class="piggy-card-svg" viewBox="0 0 280 280">
+                <ellipse cx="140" cy="245" rx="90" ry="16" fill="rgba(56, 189, 248, 0.1)"/>
+                <g class="coin-drop-loop">
+                  <circle cx="142" cy="107" r="30" fill="#0b0b0e" stroke="#71717a" stroke-width="1.8"/>
+                  <circle cx="138" cy="103" r="30" fill="url(#darkCoinGrad)" stroke="#71717a" stroke-width="2.2"/>
+                  <circle cx="138" cy="103" r="23" fill="none" stroke="#71717a" stroke-width="1.5" stroke-dasharray="3,2"/>
+                  <text x="137" y="113" font-size="28" font-weight="900" font-family="Arial" fill="#d1d1d6" text-anchor="middle">$</text>
+                </g>
+                <g class="pig-shake">
+                  <path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round"/>
+                  <rect x="75" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
+                  <rect x="175" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
+                  <ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <path d="M 80 135 C 105 118, 150 118, 175 128" class="highlight-line"/>
+                  <path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <path d="M 166 107 C 170 88, 188 92, 182 110 Z" fill="#252530" opacity="0.6"/>
+                  <ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#71717a" stroke-width="1.8"/>
+                  <circle cx="175" cy="150" r="5" fill="#d1d1d6"/>
+                  <circle cx="174" cy="148" r="1.5" fill="#000000"/>
+                  <circle cx="205" cy="147" r="5" fill="#d1d1d6"/>
+                  <circle cx="204" cy="145" r="1.5" fill="#000000"/>
+                  <ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#71717a"/>
+                  <ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#71717a"/>
+                </g>
+              </svg>
+              <div class="pig-belly-content">
+                <div class="pig-belly-label">ការប្រាក់សរុប</div>
+                <div class="pig-belly-amount" id="pigBellyAmount">
+                  <span id="pigBellyVal">0.00</span> 
+                  <span id="pigBellyCur" style="font-size:16px; font-weight:700;">USD</span>
+                </div>
+                <div class="pig-belly-rate" id="pigBellyRate">+0.00%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-dots">
+        <span class="carousel-dot active" id="dot0" onclick="setAssetsSlide(0)"></span>
+        <span class="carousel-dot" id="dot1" onclick="setAssetsSlide(1)"></span>
+      </div>
+    </div>
+
+    <div class="info-list">
+      <div class="info-row">
+        <div class="row-left"><i data-lucide="camera"></i><span>រូបតំណាងក្រុមហ៊ុន:</span></div>
+        <div class="row-right"><span id="companyNameText">មាសបៃតង</span><span class="avatar-badge" id="companyLogoBadge"><img src="https://i.ibb.co/Rkt5HqTQ/IMG-2370.jpg" alt="Company"></span></div>
+      </div>
+      <div class="info-row">
+        <div class="row-left"><i data-lucide="send"></i><span>តេឡេក្រាមគណនី:</span></div>
+        <div class="row-right"><span class="telegram-badge" id="btnContactTelegram" onclick="openContactTelegram()">ទំនាក់ទំនង</span></div>
+      </div>
+      <div class="info-row">
+        <div class="row-left"><i data-lucide="user"></i><span>ឈ្មោះអាខោន:</span></div>
+        <div class="row-right"><span id="assetsName">(…)</span></div>
+      </div>
+      <div class="info-row">
+        <div class="row-left"><i data-lucide="mail"></i><span>លេខសម្គាល់ (UID)</span></div>
+        <div class="row-right"><span id="assetsUID">...</span></div>
+      </div>
+      <div class="info-row">
+        <div class="row-left"><i data-lucide="dollar-sign"></i><span>ទឹកប្រាក់អតិបរមា សរុបUSD:</span></div>
+        <div class="row-right txt-cyan"><span id="maxDepositText">0.00 USD</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageDeposit">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="closeDepositPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">ដាក់ប្រាក់</div>
+      <div style="width: 38px;"></div>
+    </div>
+    
+    <div id="depositStep1" style="display: flex; flex-direction: column; width: 100%;">
+      <div class="deposit-main-card">
+        <div class="dep-header-title-center">ចំនួនទឹកប្រាក់ដែលត្រូវដាក់</div>
+        <div class="dep-amount-input-box-center">
+          <span class="dep-dollar-sign">$</span>
+          <span id="depositDisplayVal" class="dep-number-display">0.00</span>
+        </div>
+        <div class="dep-divider"></div>
+        <div class="pigs-grid">
+          <div class="pig-option-btn" onclick="selectPigAmount(10, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$10</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(20, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG2)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$20</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(30, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG3" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG3)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$30</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(40, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG4" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG4)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$40</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(50, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG5" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG5)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$50</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(100, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG6" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG6)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$100</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(300, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG7" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG7)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$300</span>
+          </div>
+          <div class="pig-option-btn" onclick="selectPigAmount(500, this)">
+            <svg class="pig-option-svg" viewBox="0 0 280 280">
+              <defs><linearGradient id="pigOptG8" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
+              <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG8)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+            </svg>
+            <span class="pig-amount-lbl">$500</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="deposit-form-group">
+        <div class="dep-select-box" onclick="openBankModal()">
+          <span id="selectedMethodText">ជ្រើសរើសវិធីដាក់ប្រាក់</span>
+          <i data-lucide="chevron-down" style="width: 18px; height: 18px; color: #00bcd4;"></i>
+        </div>
+        <div class="dep-input-box">
+          <input type="text" id="senderAccountName" placeholder="ឈ្មោះគណនីរបស់អ្នក" oninput="checkStep1Validation()">
+        </div>
+        <button class="dep-submit-btn disabled" id="btnConfirmDeposit" onclick="goToDepositStep2()">ស្កេនទូទាត់ប្រាក់</button>
+      </div>
+    </div>
+
+    <div id="depositStep2">
+      <div class="khqr-full-sheet">
+        <div class="khqr-top-red">KHQR</div>
+        <div class="khqr-sheet-body">
+          <div class="khqr-merchant">BOBOTOU TOPUP</div>
+          <div class="khqr-currency">( USD )</div>
+          <div class="khqr-code-img">
+            <img id="khqrDynamicImg" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=BOBOTOU_TOPUP_KHQR" alt="KHQR Code">
+            <div class="khqr-center-logo">
+              <span style="color: #ffffff; font-weight: 800; font-size: 15px; font-family: Arial;">$</span>
+            </div>
+          </div>
+          <div class="khqr-sheet-notice">
+            សូមធ្វើការបាញ់ប្រាក់តាមរយៈ QR Code ខាងលើ រួចភ្ជាប់រូបភាពវិក្កយបត្រមកកាន់យើងខ្ញុំដើម្បីផ្ទៀងផ្ទាត់
+          </div>
+          <div class="khqr-sheet-upload-btn" onclick="document.getElementById('receiptFileInput').click()">
+            <span id="receiptFileName">បញ្ចូលរូបភាពវិក្កយបត្របាញ់ប្រាក់ (Receipt)</span>
+            <i data-lucide="image" style="width: 20px; height: 20px; color: #00bcd4;"></i>
+            <input type="file" id="receiptFileInput" accept="image/*" style="display: none;" onchange="handleReceiptUpload(this)">
+          </div>
+          <div class="khqr-sheet-hint">បន្ទាប់ពីស្កេនបង់ប្រាក់រួច សូមចុចប៊ូតុងផ្ញើរសំណើរដាក់ប្រាក់</div>
+          <button class="khqr-sheet-submit-btn disabled" id="btnFinalSubmit" onclick="submitFinalDeposit()">ផ្ញើរសំណើរដាក់ប្រាក់</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageSuccess">
+    <div class="success-page-content" style="display:flex; flex-direction:column; align-items:center; width:100%; padding:20px 4px 30px 4px;">
+      <div class="success-page-circle"><i data-lucide="check" style="width: 44px; height: 44px; stroke-width: 3.2;"></i></div>
+      <div class="success-page-title">ទទួលបានជោគជ័យ</div>
+      <div class="success-page-amount"><span id="scAmountHeader">0.00</span> USD</div>
+      <div class="success-page-sub">ចំនួនទឹកប្រាក់ទូទាត់ទទួលបានជោគជ័យ</div>
+      <div class="success-details-card">
+        <div class="detail-header-title" style="margin-bottom: 12px; font-size: 16px;">ព័ត៌មានលម្អិតប្រតិបត្តិការ</div>
+        <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (ID):</span><span class="detail-row-val" id="scTxnID">TXN-000000</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">ឈ្មោះអាខោន:</span><span class="detail-row-val" id="scAccountName">(…)</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">លេខសម្គាល់ (UID):</span><span class="detail-row-val" id="scUID">...</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">វិធីបង់ប្រាក់:</span><span class="detail-row-val" id="scBank" style="color: #00bcd4;">KHQR</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">ឈ្មោះគណនីរបស់អ្នក:</span><span class="detail-row-val" id="scSenderName">...</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">កាលបរិច្ឆេទ:</span><span class="detail-row-val" id="scDate">--/--/---- --:--</span></div>
+        <div class="detail-row"><span class="detail-row-lbl">ចំនួនទឹកប្រាក់:</span><span class="detail-row-val" id="scAmount" style="color: #00d2d3; font-size: 15px;">+0.00 USD</span></div>
+      </div>
+      <button class="success-page-btn" id="btnConfirmSuccess">យល់ព្រម</button>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageHistory">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="closeHistoryPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">ប្រវត្តិប្រតិបត្តិការ</div>
+      <div style="width: 38px;"></div>
+    </div>
+    <div id="historyList"></div>
+    <div id="historyEmptyState" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding: 65px 20px;">
+      <svg viewBox="0 0 120 120" style="width: 85px; height: 85px; margin-bottom: 16px; opacity: 0.75;">
+        <path d="M 20 35 Q 40 30 60 38 Q 80 30 100 35 L 100 85 Q 80 80 60 88 Q 40 80 20 85 Z" fill="none" stroke="#52525b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 60 38 L 60 88" stroke="#52525b" stroke-width="2.5"/>
+        <path d="M 28 48 Q 42 44 54 49" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 28 60 Q 42 56 54 61" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 66 49 Q 78 44 92 48" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 66 61 Q 78 56 92 60" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="70" cy="55" r="18" fill="none" stroke="#71717a" stroke-width="3"/>
+        <line x1="83" y1="68" x2="102" y2="87" stroke="#71717a" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="70" cy="55" r="14" fill="rgba(255,255,255,0.03)"/>
+      </svg>
+      <span style="color: #71717a; font-size: 14px; font-weight: 500;">មិនទាន់មានប្រវត្តិប្រតិបត្តិការនៅឡើយទេ</span>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageInterest">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="closeInterestPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">ប្រវត្តិការប្រាក់</div>
+      <div style="width: 38px;"></div>
+    </div>
+    <div id="interestList"></div>
+    <div id="interestEmptyState" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding: 65px 20px;">
+      <svg viewBox="0 0 120 120" style="width: 85px; height: 85px; margin-bottom: 16px; opacity: 0.75;">
+        <path d="M 20 35 Q 40 30 60 38 Q 80 30 100 35 L 100 85 Q 80 80 60 88 Q 40 80 20 85 Z" fill="none" stroke="#52525b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 60 38 L 60 88" stroke="#52525b" stroke-width="2.5"/>
+        <path d="M 28 48 Q 42 44 54 49" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 28 60 Q 42 56 54 61" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 66 49 Q 78 44 92 48" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 66 61 Q 78 56 92 60" stroke="#3f3f46" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="70" cy="55" r="18" fill="none" stroke="#71717a" stroke-width="3"/>
+        <line x1="83" y1="68" x2="102" y2="87" stroke="#71717a" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="70" cy="55" r="14" fill="rgba(255,255,255,0.03)"/>
+      </svg>
+      <span style="color: #71717a; font-size: 14px; font-weight: 500;">មិនទាន់មានប្រវត្តិការប្រាក់នៅឡើយទេ</span>
+    </div>
+  </div>
+
+  <div class="switch-dock" id="switchDock">
+    <div class="sliding-pill" id="slidingPill"></div>
+    <button class="switch-btn active" id="btnHome" onclick="selectTab('home')">
+      <i data-lucide="home"></i>
+      <span>ទំព័រដើម</span>
+    </button>
+    <button class="switch-btn" id="btnAssets" onclick="selectTab('assets')">
+      <i data-lucide="credit-card"></i>
+      <span>ទ្រព្យសកម្ម</span>
+    </button>
+  </div>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
