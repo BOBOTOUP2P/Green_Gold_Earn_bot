@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, get, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const GOOGLE_SHEET_API = "https://script.google.com/macros/s/AKfycbx7i3XFhXpMxl5ps9aIosFpBly-ih0y9e87yIJ5lMQejUcRhygF6rpBDavbaXnrDzX8/exec";
 
@@ -27,14 +27,20 @@ let CONFIG = {
   qrCodes: {}
 };
 
-// ស្ដាប់ System Config ផ្ទាល់ពី Firebase Realtime (លឿនបំផុត)
-onValue(ref(db, "systemConfig"), (snap) => {
-  if (snap.exists()) {
-    CONFIG = { ...CONFIG, ...snap.val() };
-    const logoEl = document.getElementById('companyLogoBadge');
-    const nameEl = document.getElementById('companyNameText');
-    if (logoEl) logoEl.innerHTML = `<img src="${CONFIG.companyLogo}" alt="Company">`;
-    if (nameEl) nameEl.innerText = CONFIG.companyName;
+function renderCompanyUI() {
+  const logoEl = document.getElementById('companyLogoBadge');
+  const nameEl = document.getElementById('companyNameText');
+  if (logoEl) logoEl.innerHTML = `<img src="${CONFIG.companyLogo}" alt="Company">`;
+  if (nameEl) nameEl.innerText = CONFIG.companyName;
+}
+renderCompanyUI();
+
+// ស្តាប់ការកំណត់ពី Firebase ដោយផ្ទាល់ (Realtime)
+onValue(ref(db, 'system_config'), (snapshot) => {
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    CONFIG = { ...CONFIG, ...data };
+    renderCompanyUI();
   }
 });
 
@@ -49,25 +55,12 @@ document.addEventListener('click', function(e) {
   }
 });
 
-function hasPendingDeposit() {
-  if (!currentUser.transactions) return false;
-  return Object.values(currentUser.transactions).some(t => (t.status || '').toLowerCase() === 'pending…');
-}
-
-function getFormattedDateTime(d = new Date()) {
-  const day = String(d.getDate()).padStart(2, '0');
-  const mon = String(d.getMonth() + 1).padStart(2, '0');
-  const yr = d.getFullYear();
-  const hr = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${day}/${mon}/${yr} ${hr}:${min}`;
-}
-
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.expand();
   tg.ready();
 }
+
 const tgUser = tg?.initDataUnsafe?.user;
 
 let currentUser = {
@@ -76,10 +69,9 @@ let currentUser = {
   photo: "",
   totalDeposits: 0,
   baseBalance: 0.00,
-  totalInterestVal: 0.00,
+  totalInterestVal: 0,
   balance: 0.00,
   maxPeak: 0.00,
-  totalRateSummary: "+0.00%",
   transactions: {},
   interests: {}
 };
@@ -102,6 +94,7 @@ document.getElementById('homeName').innerText = currentUser.name;
 document.getElementById('homeUID').innerText = `UID: ${currentUser.uid}`;
 document.getElementById('myRowName').innerText = currentUser.name;
 document.getElementById('myRowUID').innerText = currentUser.uid;
+document.getElementById('myRowCount').innerText = currentUser.totalDeposits;
 document.getElementById('assetsName').innerText = currentUser.name;
 document.getElementById('assetsUID').innerText = currentUser.uid;
 
@@ -110,150 +103,27 @@ if (currentUser.photo) {
   document.getElementById('myRowAvatar').innerHTML = `<img src="${currentUser.photo}" alt="Profile" style="width:100%; height:100%; object-fit:cover;">`;
 }
 
-// ភ្ជាប់ Firebase Realtime សម្រាប់ User Data ទាំងមូល (លឿនដូចផ្លេកបន្ទោរ)
-const userRef = ref(db, 'users/' + currentUser.uid);
-onValue(userRef, (snap) => {
-  if (snap.exists()) {
-    const d = snap.val();
-    currentUser.totalDeposits = d.totalDeposits || 0;
-    currentUser.baseBalance = d.baseBalance || 0;
-    currentUser.totalInterestVal = d.totalInterestVal || 0;
-    currentUser.balance = d.balance !== undefined ? d.balance : (currentUser.baseBalance + currentUser.totalInterestVal);
-    currentUser.maxPeak = d.maxPeak || currentUser.balance;
-    currentUser.totalRateSummary = d.totalRateSummary || "+0.00%";
-    currentUser.transactions = d.transactions || {};
-    currentUser.interests = d.interests || {};
+function hasPendingDeposit() {
+  if (!currentUser.transactions) return false;
+  return Object.values(currentUser.transactions).some(t => (t.status || '').toLowerCase() === 'pending…');
+}
 
-    updateUI();
+function getFormattedDateTime(d = new Date()) {
+  const day = String(d.getDate()).padStart(2, '0');
+  const mon = String(d.getMonth() + 1).padStart(2, '0');
+  const yr = d.getFullYear();
+  const hr = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${mon}/${yr} ${hr}:${min}`;
+}
 
-    // ពិនិត្យ Popup Done
-    Object.values(currentUser.transactions).forEach(t => {
-      if ((t.status || '').toLowerCase() === 'done' && !shownPopups.includes(t.id)) {
-        showSuccessPopup(t);
-        shownPopups.push(t.id);
-        localStorage.setItem("shown_success_popups", JSON.stringify(shownPopups));
-      }
-    });
-  } else {
-    set(userRef, {
-      name: currentUser.name,
-      uid: currentUser.uid,
-      photo: currentUser.photo,
-      totalDeposits: 0,
-      baseBalance: 0.00,
-      totalInterestVal: 0.00,
-      balance: 0.00,
-      maxPeak: 0.00,
-      totalRateSummary: "+0.00%",
-      createdAt: Date.now()
-    });
+async function checkAndUpdateMaxPeak(currentBal) {
+  if (currentBal > (currentUser.maxPeak || 0.00)) {
+    currentUser.maxPeak = currentBal;
+    await update(ref(db, `users/${currentUser.uid}`), { maxPeak: currentUser.maxPeak });
   }
-});
-
-function updateUI() {
-  const rowCount = document.getElementById('myRowCount');
-  if (rowCount) rowCount.innerText = currentUser.totalDeposits;
-  
-  const balVal = document.getElementById('balanceVal');
-  if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
-  
   const maxEl = document.getElementById('maxDepositText');
   if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
-
-  setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), currentUser.totalRateSummary);
-  
-  const bRate1 = document.getElementById('walletBillRate1');
-  const bRate2 = document.getElementById('walletBillRate2');
-  if (bRate1) bRate1.innerText = currentUser.totalRateSummary;
-  if (bRate2) bRate2.innerText = currentUser.totalRateSummary;
-
-  renderHistory(currentUser.transactions);
-  renderInterests(currentUser.interests);
-  checkStep1Validation();
-}
-
-window.openContactTelegram = function() {
-  if (CONFIG.telegramLink) window.open(CONFIG.telegramLink, '_blank');
-};
-
-const percentText = document.getElementById('percentText');
-const progressFill = document.getElementById('progressFill');
-const splashScreen = document.getElementById('splashScreen');
-let currentPercent = 0;
-
-function updateProgress(val) {
-  percentText.textContent = val + '%';
-  progressFill.style.width = val + '%';
-}
-function startLoading() {
-  const stage1 = setInterval(() => {
-    if (currentPercent < 71) {
-      currentPercent++;
-      updateProgress(currentPercent);
-    } else {
-      clearInterval(stage1);
-      setTimeout(() => { finishLoading(); }, 2000);
-    }
-  }, 25);
-}
-function finishLoading() {
-  const stage2 = setInterval(() => {
-    if (currentPercent < 100) {
-      currentPercent++;
-      updateProgress(currentPercent);
-    } else {
-      clearInterval(stage2);
-      setTimeout(() => { splashScreen.classList.add('fade-out'); }, 400);
-    }
-  }, 25);
-}
-startLoading();
-
-async function sendAdminTelegramAlert(txn, photoFile) {
-  const token = CONFIG.adminBotToken;
-  const adminId = CONFIG.adminChatId;
-  if (!token || !adminId) return;
-
-  const caption = `🚨 <b>មានសំណើរដាក់ប្រាក់ថ្មី (NEW DEPOSIT REQUEST)</b> 🚨\n\n` +
-                  `👤 <b>ឈ្មោះអ្នកផ្ញើ:</b> ${txn.sender}\n` +
-                  `🆔 <b>User UID:</b> <code>${txn.uid}</code>\n` +
-                  `💵 <b>ចំនួនទឹកប្រាក់:</b> <b>${txn.amount}</b>\n` +
-                  `🏦 <b>ធនាគារ:</b> ${txn.bank}\n` +
-                  `🧾 <b>លេខសម្គាល់:</b> <code>${txn.id}</code>\n` +
-                  `⏰ <b>កាលបរិច្ឆេទ:</b> ${txn.date}\n` +
-                  `⏳ <b>ស្ថានភាព:</b> pending…`;
-  try {
-    if (photoFile) {
-      const formData = new FormData();
-      formData.append('chat_id', adminId);
-      formData.append('photo', photoFile);
-      formData.append('caption', caption);
-      formData.append('parse_mode', 'HTML');
-      await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData });
-    } else {
-      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: adminId, text: caption, parse_mode: 'HTML' })
-      });
-    }
-  } catch (e) {}
-}
-
-function showSuccessPopup(txn) {
-  document.getElementById('scAmountHeader').innerText = txn.amount.replace(/[^0-9.]/g, '');
-  document.getElementById('scTxnID').innerText = txn.id;
-  document.getElementById('scAccountName').innerText = currentUser.name;
-  document.getElementById('scUID').innerText = currentUser.uid;
-  document.getElementById('scBank').innerText = txn.bank;
-  document.getElementById('scSenderName').innerText = txn.sender;
-  document.getElementById('scDate').innerText = txn.date;
-  document.getElementById('scAmount').innerText = txn.amount;
-
-  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-  document.getElementById('pageSuccess').classList.add('active');
-  switchDock.style.display = 'none';
-  lucide.createIcons();
 }
 
 window.autoScalePigAmount = function(valString) {
@@ -261,20 +131,35 @@ window.autoScalePigAmount = function(valString) {
   const curSpan = document.getElementById('pigBellyCur');
   if (!amountBox) return;
   const len = valString.toString().length;
-  if (len <= 4) { amountBox.style.fontSize = "28px"; if (curSpan) curSpan.style.fontSize = "16px"; }
-  else if (len <= 6) { amountBox.style.fontSize = "25px"; if (curSpan) curSpan.style.fontSize = "14.5px"; }
-  else if (len <= 8) { amountBox.style.fontSize = "21px"; if (curSpan) curSpan.style.fontSize = "13px"; }
-  else if (len <= 10) { amountBox.style.fontSize = "17.5px"; if (curSpan) curSpan.style.fontSize = "11.5px"; }
-  else { amountBox.style.fontSize = "14.5px"; if (curSpan) curSpan.style.fontSize = "10px"; }
+  if (len <= 4) {
+    amountBox.style.fontSize = "28px";
+    if (curSpan) curSpan.style.fontSize = "16px";
+  } else if (len <= 6) { 
+    amountBox.style.fontSize = "25px";
+    if (curSpan) curSpan.style.fontSize = "14.5px";
+  } else if (len <= 8) { 
+    amountBox.style.fontSize = "21px";
+    if (curSpan) curSpan.style.fontSize = "13px";
+  } else if (len <= 10) { 
+    amountBox.style.fontSize = "17.5px";
+    if (curSpan) curSpan.style.fontSize = "11.5px";
+  } else { 
+    amountBox.style.fontSize = "14.5px";
+    if (curSpan) curSpan.style.fontSize = "10px";
+  }
 };
 
 window.setPigBellyDisplay = function(val, rate) {
   const valEl = document.getElementById('pigBellyVal');
   const rateEl = document.getElementById('pigBellyRate');
-  if (valEl) { valEl.innerText = val; autoScalePigAmount(val); }
-  if (rateEl && rate !== undefined) { rateEl.innerText = rate; }
+  if (valEl) {
+    valEl.innerText = val;
+    autoScalePigAmount(val);
+  }
+  if (rateEl && rate !== undefined) {
+    rateEl.innerText = rate;
+  }
 };
-autoScalePigAmount("0.00");
 
 function renderHistory(txns) {
   const historyList = document.getElementById('historyList');
@@ -297,10 +182,15 @@ function renderHistory(txns) {
     let statusClass = '';
     let cardClass = '';
 
-    if (statusLower === 'done') {
+    if (statusLower === 'done' || statusLower === 'ទទួលបានជោគជ័យ') {
       statusText = 'ទទួលបានជោគជ័យ';
       statusClass = 'txt-done';
       cardClass = 'status-done';
+      if (!shownPopups.includes(t.id)) {
+        showSuccessPopup(t);
+        shownPopups.push(t.id);
+        localStorage.setItem("shown_success_popups", JSON.stringify(shownPopups));
+      }
     } else if (statusLower === 'refuse') {
       statusText = 'Refuse';
       statusClass = 'txt-refuse';
@@ -314,7 +204,7 @@ function renderHistory(txns) {
             <svg class="mini-pig-svg" viewBox="0 0 280 280">
               <defs><linearGradient id="miniPig_${t.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs>
               <g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g>
-              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
+              <g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g>
             </svg>
           </div>
           <div class="trans-info">
@@ -373,13 +263,92 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
+// មុខងារអាប់ដេតទិន្នន័យលើផ្ទាំង UI ភ្លាមៗ (Realtime ពី Firebase)
+function updateUIFromData(data) {
+  if (!data) return;
+  currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
+  currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
+  currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+  currentUser.balance = data.balance !== undefined ? Number(data.balance) : (currentUser.baseBalance + currentUser.totalInterestVal);
+  currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
+  currentUser.transactions = data.transactions || {};
+  currentUser.interests = data.interests || {};
+
+  const rowCount = document.getElementById('myRowCount');
+  if (rowCount) rowCount.innerText = currentUser.totalDeposits;
+
+  const balVal = document.getElementById('balanceVal');
+  if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
+
+  const maxEl = document.getElementById('maxDepositText');
+  if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
+
+  // គណនាការប្រាក់សរុប និងភាគរយ
+  let totalRateVal = 0;
+  Object.values(currentUser.interests).forEach(it => {
+    if ((it.status || '').toLowerCase() === 'done') {
+      totalRateVal += parseFloat((it.rate || '0').replace(/[^0-9.]/g, '')) || 0;
+    }
+  });
+  const finalRate = "+" + totalRateVal.toFixed(2) + "%";
+
+  setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), finalRate);
+  const bRate1 = document.getElementById('walletBillRate1');
+  const bRate2 = document.getElementById('walletBillRate2');
+  if (bRate1) bRate1.innerText = finalRate;
+  if (bRate2) bRate2.innerText = finalRate;
+
+  renderHistory(currentUser.transactions);
+  renderInterests(currentUser.interests);
+  checkStep1Validation();
+}
+
+async function syncUserToDatabase() {
+  const userRef = ref(db, 'users/' + currentUser.uid);
+  const snapshot = await get(userRef);
+  if (!snapshot.exists()) {
+    await set(userRef, {
+      name: currentUser.name,
+      uid: currentUser.uid,
+      photo: currentUser.photo,
+      totalDeposits: 0,
+      baseBalance: 0.00,
+      totalInterestVal: 0.00,
+      balance: 0.00,
+      maxPeak: 0.00,
+      transactions: {},
+      interests: {},
+      createdAt: Date.now()
+    });
+  } else {
+    await update(userRef, { name: currentUser.name, photo: currentUser.photo });
+  }
+
+  // ស្តាប់ Realtime Firebase ដោយផ្ទាល់
+  onValue(userRef, (snap) => {
+    if (snap.exists()) {
+      updateUIFromData(snap.val());
+    }
+  });
+
+  // បង្កើត Sheet សម្រាប់ User ក្នុង Google Sheet តាមក្រោយដោយស្ងាត់ៗ
+  fetch(GOOGLE_SHEET_API, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: "sync_user_sheet", name: currentUser.name, uid: currentUser.uid, balance: "0.00 USD" })
+  }).catch(()=>{});
+}
+syncUserToDatabase();
+
+// បញ្ជីចំណាត់ថ្នាក់តារាង (Home Table)
 const btnViewAll = document.getElementById('btnViewAll');
 onValue(ref(db, 'users'), (snapshot) => {
   const tableBody = document.getElementById("homeTableList");
   let usersList = [];
   if (snapshot.exists()) {
     const usersData = snapshot.val();
-    Object.keys(usersData).forEach(k => { usersList.push(usersData[k]); });
+    Object.keys(usersData).forEach(k => usersList.push(usersData[k]));
   }
   if (!usersList.some(u => u.uid === currentUser.uid)) {
     usersList.push(currentUser);
@@ -411,48 +380,154 @@ onValue(ref(db, 'users'), (snapshot) => {
   btnViewAll.style.display = usersList.length >= 6 ? 'inline-flex' : 'none';
 });
 
-let isTableFullscreen = false;
-const viewAllText = document.getElementById('viewAllText');
-const fullscreenIcon = document.getElementById('fullscreenIcon');
-const appContainer = document.querySelector('.app-container');
-const maxIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`;
-const minIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/></svg>`;
+// សកម្មភាពដាក់ប្រាក់ (Deposit)
+window.submitFinalDeposit = async function() {
+  if (!hasUploadedReceipt || hasPendingDeposit()) return;
+  const val = currentDepositAmount || 0.00;
+  const senderName = document.getElementById('senderAccountName').value.trim() || '(មិនបានបញ្ជាក់)';
+  const dateStr = getFormattedDateTime();
+  const txnID = 'TXN-' + Math.floor(1000000 + Math.random() * 9000000);
+  
+  const txnData = {
+    id: txnID,
+    name: currentUser.name,
+    uid: currentUser.uid,
+    bank: selectedBankName,
+    sender: senderName,
+    date: dateStr,
+    amount: '+' + val.toFixed(2) + ' USD',
+    balance: currentUser.balance.toFixed(2) + ' USD',
+    status: 'pending…',
+    timestamp: Date.now()
+  };
 
+  // កត់ត្រាចូល Firebase ភ្លាមៗ (Realtime)
+  await set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData);
+
+  // ផ្ញើទៅ Google Sheet សម្រាប់ Admin មើល
+  fetch(GOOGLE_SHEET_API, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(txnData)
+  }).catch(()=>{});
+
+  sendAdminTelegramAlert(txnData, uploadedReceiptFile);
+
+  pageDeposit.classList.remove('active');
+  pageHistory.classList.add('active');
+  switchDock.style.display = 'none';
+
+  currentDepositAmount = 0;
+  selectedBankName = "";
+  hasUploadedReceipt = false;
+  uploadedReceiptFile = null;
+  document.getElementById('depositDisplayVal').innerText = '0.00';
+  document.getElementById('selectedMethodText').innerText = 'ជ្រើសរើសវិធីដាក់ប្រាក់';
+  document.getElementById('selectedMethodText').style.color = '#d1d1d6';
+  document.getElementById('senderAccountName').value = '';
+  document.getElementById('receiptFileName').innerText = "បញ្ចូលរូបភាពវិក្កយបត្របាញ់ប្រាក់ (Receipt)";
+  document.getElementById('receiptFileName').style.color = "#334155";
+  document.getElementById('receiptFileInput').value = '';
+  document.querySelectorAll('.pig-option-btn').forEach(btn => btn.classList.remove('selected'));
+  checkStep1Validation();
+};
+
+async function sendAdminTelegramAlert(txn, photoFile) {
+  const token = CONFIG.adminBotToken;
+  const adminId = CONFIG.adminChatId;
+  if (!token || !adminId) return;
+
+  const caption = `🚨 <b>មានសំណើរដាក់ប្រាក់ថ្មី (NEW DEPOSIT REQUEST)</b> 🚨\n\n` +
+                  `👤 <b>ឈ្មោះអ្នកផ្ញើ:</b> ${txn.sender}\n` +
+                  `🆔 <b>User UID:</b> <code>${txn.uid}</code>\n` +
+                  `💵 <b>ចំនួនទឹកប្រាក់:</b> <b>${txn.amount}</b>\n` +
+                  `🏦 <b>ធនាគារ:</b> ${txn.bank}\n` +
+                  `🧾 <b>លេខសម្គាល់:</b> <code>${txn.id}</code>\n` +
+                  `⏰ <b>កាលបរិច្ឆេទ:</b> ${txn.date}\n` +
+                  `⏳ <b>ស្ថានភាព:</b> pending…`;
+
+  try {
+    if (photoFile) {
+      const formData = new FormData();
+      formData.append('chat_id', adminId);
+      formData.append('photo', photoFile);
+      formData.append('caption', caption);
+      formData.append('parse_mode', 'HTML');
+      await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData });
+    } else {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: caption, parse_mode: 'HTML' })
+      });
+    }
+  } catch (e) {}
+}
+
+function showSuccessPopup(txn) {
+  document.getElementById('scAmountHeader').innerText = txn.amount.replace(/[^0-9.]/g, '');
+  document.getElementById('scTxnID').innerText = txn.id;
+  document.getElementById('scAccountName').innerText = currentUser.name;
+  document.getElementById('scUID').innerText = currentUser.uid;
+  document.getElementById('scBank').innerText = txn.bank;
+  document.getElementById('scSenderName').innerText = txn.sender;
+  document.getElementById('scDate').innerText = txn.date;
+  document.getElementById('scAmount').innerText = txn.amount;
+
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.getElementById('pageSuccess').classList.add('active');
+  switchDock.style.display = 'none';
+  lucide.createIcons();
+}
+
+// គំនូសជីវចលផ្ទុកទំព័រដើម Splash
+const percentText = document.getElementById('percentText');
+const progressFill = document.getElementById('progressFill');
+const splashScreen = document.getElementById('splashScreen');
+let currentPercent = 0;
+function updateProgress(val) { percentText.textContent = val + '%'; progressFill.style.width = val + '%'; }
+function startLoading() {
+  const stage1 = setInterval(() => {
+    if (currentPercent < 71) { currentPercent++; updateProgress(currentPercent); }
+    else { clearInterval(stage1); setTimeout(() => { finishLoading(); }, 1800); }
+  }, 20);
+}
+function finishLoading() {
+  const stage2 = setInterval(() => {
+    if (currentPercent < 100) { currentPercent++; updateProgress(currentPercent); }
+    else { clearInterval(stage2); setTimeout(() => { splashScreen.classList.add('fade-out'); }, 300); }
+  }, 20);
+}
+startLoading();
+
+// ប៊ូតុង និងផ្ទាំងផ្សេងៗ
+let isTableFullscreen = false;
 window.toggleTableFullscreen = function() {
   isTableFullscreen = !isTableFullscreen;
+  const appContainer = document.querySelector('.app-container');
   if (isTableFullscreen) {
     appContainer.classList.add('table-fullscreen');
-    viewAllText.innerText = 'បង្រួម';
-    fullscreenIcon.innerHTML = minIconSvg;
+    document.getElementById('viewAllText').innerText = 'បង្រួម';
   } else {
     appContainer.classList.remove('table-fullscreen');
-    viewAllText.innerText = 'មើលទាំងអស់';
-    fullscreenIcon.innerHTML = maxIconSvg;
+    document.getElementById('viewAllText').innerText = 'មើលទាំងអស់';
   }
 };
 
 window.openProfileModal = function(photoUrl, name, uid) {
   const modal = document.getElementById('profileModal');
   const modalAvatar = document.getElementById('modalAvatar');
+  modalAvatar.classList.remove('square-mode');
   document.getElementById('modalName').innerText = name || '(…)';
   document.getElementById('modalUid').innerText = uid ? `UID: ${uid}` : '';
-  modalAvatar.classList.remove('square-mode');
-  if (photoUrl) {
-    modalAvatar.innerHTML = `<img src="${photoUrl}" alt="${name}">`;
-  } else {
-    modalAvatar.innerHTML = `<i data-lucide="user" style="width: 60px; height: 60px; color: #ffffff;"></i>`;
-  }
+  modalAvatar.innerHTML = photoUrl ? `<img src="${photoUrl}" alt="${name}">` : `<i data-lucide="user" style="width: 60px; height: 60px; color: #ffffff;"></i>`;
   modal.classList.add('active');
   lucide.createIcons();
 };
 
-window.toggleAvatarShape = function() {
-  document.getElementById('modalAvatar').classList.toggle('square-mode');
-};
-window.closeProfileModal = function() {
-  document.getElementById('profileModal').classList.remove('active');
-  document.getElementById('modalAvatar').classList.remove('square-mode');
-};
+window.toggleAvatarShape = function() { document.getElementById('modalAvatar').classList.toggle('square-mode'); };
+window.closeProfileModal = function() { document.getElementById('profileModal').classList.remove('active'); };
 
 let selectedBankName = "";
 let currentDepositAmount = 0;
@@ -478,20 +553,21 @@ window.openBankModal = function() { document.getElementById('bankModal').classLi
 window.closeBankModal = function() { document.getElementById('bankModal').classList.remove('active'); };
 window.selectBank = function(name) {
   selectedBankName = name;
-  document.getElementById('selectedMethodText').innerText = name;
-  document.getElementById('selectedMethodText').style.color = "#ffffff";
+  const textEl = document.getElementById('selectedMethodText');
+  textEl.innerText = name;
+  textEl.style.color = "#ffffff";
   closeBankModal();
   checkStep1Validation();
 };
 
 window.openTransDetailModal = function(data) {
-  document.getElementById('dtlTxnID').innerText = data.id;
-  document.getElementById('dtlAccountName').innerText = currentUser.name;
-  document.getElementById('dtlUID').innerText = currentUser.uid;
+  document.getElementById('dtlTxnID').innerText = data.id || 'TXN-000000';
+  document.getElementById('dtlAccountName').innerText = currentUser.name || '(…)';
+  document.getElementById('dtlUID').innerText = currentUser.uid || 'N/A';
   document.getElementById('dtlBank').innerText = data.bank || 'KHQR';
   document.getElementById('dtlSenderName').innerText = data.sender || '(មិនបានបញ្ជាក់)';
-  document.getElementById('dtlDate').innerText = data.date;
-  document.getElementById('dtlAmount').innerText = data.amount;
+  document.getElementById('dtlDate').innerText = data.date || getFormattedDateTime();
+  document.getElementById('dtlAmount').innerText = data.amount || '+0.00 USD';
   document.getElementById('transDetailModal').classList.add('active');
 };
 window.closeTransDetailModal = function() { document.getElementById('transDetailModal').classList.remove('active'); };
@@ -509,13 +585,13 @@ window.openCardDetail = function(el) {
 };
 
 window.openInterestDetailModal = function(data) {
-  document.getElementById('dtlIntID').innerText = data.id;
-  document.getElementById('dtlIntName').innerText = currentUser.name;
-  document.getElementById('dtlIntUID').innerText = currentUser.uid;
-  document.getElementById('dtlIntDate').innerText = data.date;
-  document.getElementById('dtlIntBalance').innerText = data.balance;
-  document.getElementById('dtlIntRate').innerText = data.rate;
-  document.getElementById('dtlIntAmount').innerText = data.amount;
+  document.getElementById('dtlIntID').innerText = data.id || 'INT-000000';
+  document.getElementById('dtlIntName').innerText = currentUser.name || '(…)';
+  document.getElementById('dtlIntUID').innerText = currentUser.uid || 'N/A';
+  document.getElementById('dtlIntDate').innerText = data.date || getFormattedDateTime();
+  document.getElementById('dtlIntBalance').innerText = data.balance || (currentUser.balance.toFixed(2) + ' USD');
+  document.getElementById('dtlIntRate').innerText = data.rate || '+0.00%';
+  document.getElementById('dtlIntAmount').innerText = data.amount || '+0.00 USD';
   document.getElementById('interestDetailModal').classList.add('active');
 };
 window.closeInterestDetailModal = function() { document.getElementById('interestDetailModal').classList.remove('active'); };
@@ -545,7 +621,6 @@ window.selectPigAmount = function(amount, el) {
   document.getElementById('depositDisplayVal').innerText = amount.toFixed(2);
   document.querySelectorAll('.pig-option-btn').forEach(btn => btn.classList.remove('selected'));
   if (el) el.classList.add('selected');
-
   const qrString = CONFIG.qrCodes[amount.toString()] || `BOBOTOU_TOPUP_${amount}`;
   document.getElementById('khqrDynamicImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrString)}`;
   checkStep1Validation();
@@ -570,60 +645,6 @@ window.handleReceiptUpload = function(input) {
   }
 };
 
-window.submitFinalDeposit = async function() {
-  if (!hasUploadedReceipt || hasPendingDeposit()) return;
-  const val = currentDepositAmount || 0.00;
-  const senderName = document.getElementById('senderAccountName').value.trim() || '(មិនបានបញ្ជាក់)';
-  const dateStr = getFormattedDateTime();
-  const txnID = 'TXN-' + Math.floor(1000000 + Math.random() * 9000000);
-  
-  const txnData = {
-    id: txnID,
-    name: currentUser.name,
-    uid: currentUser.uid,
-    bank: selectedBankName,
-    sender: senderName,
-    date: dateStr,
-    amount: '+' + val.toFixed(2) + ' USD',
-    balance: currentUser.balance.toFixed(2) + ' USD',
-    status: 'pending…',
-    timestamp: Date.now()
-  };
-
-  // បញ្ចូលត្រង់ទៅ Firebase Realtime ភ្លាមៗ
-  await set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData);
-
-  // កត់ត្រាទៅ Google Sheet សម្រាប់ផ្ទាំង Admin បង្ហាញ
-  try {
-    fetch(GOOGLE_SHEET_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(txnData)
-    });
-  } catch(e) {}
-
-  sendAdminTelegramAlert(txnData, uploadedReceiptFile);
-
-  pageDeposit.classList.remove('active');
-  pageHistory.classList.add('active');
-  switchDock.style.display = 'none';
-
-  currentDepositAmount = 0;
-  selectedBankName = "";
-  hasUploadedReceipt = false;
-  uploadedReceiptFile = null;
-  document.getElementById('depositDisplayVal').innerText = '0.00';
-  document.getElementById('selectedMethodText').innerText = 'ជ្រើសរើសវិធីដាក់ប្រាក់';
-  document.getElementById('selectedMethodText').style.color = '#d1d1d6';
-  document.getElementById('senderAccountName').value = '';
-  document.getElementById('receiptFileName').innerText = "បញ្ចូលរូបភាពវិក្កយបត្របាញ់ប្រាក់ (Receipt)";
-  document.getElementById('receiptFileName').style.color = "#334155";
-  document.getElementById('receiptFileInput').value = '';
-  document.querySelectorAll('.pig-option-btn').forEach(btn => btn.classList.remove('selected'));
-  checkStep1Validation();
-};
-
 document.getElementById('btnConfirmSuccess').addEventListener('click', () => {
   document.getElementById('pageSuccess').classList.remove('active');
   pageHistory.classList.add('active');
@@ -635,18 +656,15 @@ wallet.addEventListener('click', () => { wallet.classList.toggle('open'); });
 
 let isHidden = false;
 const eyeSvg = document.getElementById('eyeSvg');
-const eyeOpenSvg = `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" stroke="#ffffff"/><circle cx="12" cy="12" r="3"/>`;
-const eyeClosedSvg = `<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" stroke="#ffffff" stroke-width="1.8"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" stroke="#ffffff" stroke-width="1.8"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" stroke="#ffffff" stroke-width="1.8"/><line x1="2" y1="2" x2="22" y2="22" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>`;
-
 window.toggleBalance = function() {
   isHidden = !isHidden;
   const balanceVal = document.getElementById('balanceVal');
   if (isHidden) {
     balanceVal.innerText = '••••••';
-    eyeSvg.innerHTML = eyeClosedSvg;
+    eyeSvg.innerHTML = `<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" stroke="#ffffff" stroke-width="1.8"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" stroke="#ffffff" stroke-width="1.8"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" stroke="#ffffff" stroke-width="1.8"/><line x1="2" y1="2" x2="22" y2="22" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>`;
   } else {
     balanceVal.innerText = currentUser.balance.toFixed(2);
-    eyeSvg.innerHTML = eyeOpenSvg;
+    eyeSvg.innerHTML = `<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" stroke="#ffffff"/><circle cx="12" cy="12" r="3"/>`;
   }
 };
 
@@ -655,36 +673,22 @@ window.closeHistoryPage = function() { pageHistory.classList.remove('active'); p
 window.openInterestPage = function() { pageAssets.classList.remove('active'); pageInterest.classList.add('active'); switchDock.style.display = 'none'; };
 window.closeInterestPage = function() { pageInterest.classList.remove('active'); pageAssets.classList.add('active'); switchDock.style.display = 'flex'; };
 
-let currentAssetsSlide = 0;
 window.setAssetsSlide = function(idx) {
-  currentAssetsSlide = idx;
   document.getElementById('assetsTrack').style.transform = `translateX(-${idx * 50}%)`;
   document.getElementById('dot0').classList.toggle('active', idx === 0);
   document.getElementById('dot1').classList.toggle('active', idx === 1);
 };
-
-const carouselWrapper = document.querySelector('.assets-carousel-wrapper');
-let carStartX = 0;
-carouselWrapper.addEventListener('touchstart', (e) => { carStartX = e.touches[0].clientX; }, { passive: true });
-carouselWrapper.addEventListener('touchend', (e) => {
-  const carDiff = e.changedTouches[0].clientX - carStartX;
-  if (carDiff > 35) setAssetsSlide(0);
-  else if (carDiff < -35) setAssetsSlide(1);
-});
 
 const slidingPill = document.getElementById('slidingPill');
 const btnHome = document.getElementById('btnHome');
 const btnAssets = document.getElementById('btnAssets');
 const pageHome = document.getElementById('pageHome');
 
-slidingPill.style.transform = 'translateX(0%)';
-
 window.selectTab = function(tab) {
   pageHistory.classList.remove('active');
   pageDeposit.classList.remove('active');
   pageInterest.classList.remove('active');
   switchDock.style.display = 'flex';
-  
   if (tab === 'home') {
     slidingPill.style.transform = 'translateX(0%)';
     btnHome.classList.add('active');
@@ -699,14 +703,5 @@ window.selectTab = function(tab) {
     pageHome.classList.remove('active');
   }
 };
-
-let startX = 0;
-switchDock.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
-switchDock.addEventListener('touchend', (e) => {
-  let endX = e.changedTouches[0].clientX;
-  let diff = endX - startX;
-  if (diff > 30) window.selectTab('assets');
-  else if (diff < -30) window.selectTab('home');
-});
 
 lucide.createIcons();
