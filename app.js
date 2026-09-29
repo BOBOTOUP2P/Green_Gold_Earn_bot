@@ -51,6 +51,14 @@ function getFormattedDateTime(d = new Date()) {
   return `${day}/${mon}/${yr} ${hr}:${min}`;
 }
 
+// មុខងារបម្លែងចំនួនទឹកប្រាក់ទៅជាសញ្ញាផ្កាយការពារឯកជនភាព (* សម្រាប់លេខ១ខ្ទង់)
+window.getMaskedRank = function(balance) {
+  var intVal = Math.floor(Math.abs(Number(balance) || 0));
+  var len = intVal.toString().length;
+  if (len <= 0) len = 1;
+  return "*".repeat(len);
+};
+
 function pushRealtimeBalanceToSheet(newBal) {
   try {
     fetch(GOOGLE_SHEET_API, {
@@ -184,15 +192,15 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     const statusLower = (item.status || '').toLowerCase();
     const existing = newInterests[item.id];
 
-    if (statusLower === 'done') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
+    if (statusLower === 'done' || statusLower === 'cashed_out') {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== statusLower) {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
           rate: item.rate || '+0.00%',
           amount: item.amount || '+0.00 USD',
           balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
-          status: 'done'
+          status: statusLower
         };
         newInterests[item.id] = intData;
         await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
@@ -344,7 +352,7 @@ document.getElementById('homeName').innerText = currentUser.name;
 document.getElementById('homeUID').innerText = `UID: ${currentUser.uid}`;
 document.getElementById('myRowName').innerText = currentUser.name;
 document.getElementById('myRowUID').innerText = currentUser.uid;
-document.getElementById('myRowCount').innerText = currentUser.totalDeposits;
+document.getElementById('myRowCount').innerText = window.getMaskedRank(currentUser.balance);
 document.getElementById('assetsName').innerText = currentUser.name;
 document.getElementById('assetsUID').innerText = currentUser.uid;
 
@@ -586,8 +594,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
@@ -621,7 +629,7 @@ function updateUIFromData(data) {
   currentUser.interests = data.interests || {};
   
   const rowCount = document.getElementById('myRowCount');
-  if (rowCount) rowCount.innerText = currentUser.totalDeposits;
+  if (rowCount) rowCount.innerText = window.getMaskedRank(currentUser.balance);
   const balVal = document.getElementById('balanceVal');
   if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
   
@@ -649,13 +657,15 @@ onValue(allUsersRef, (snapshot) => {
   if (!usersList.some(u => u.uid === currentUser.uid)) {
     usersList.push(currentUser);
   }
-  usersList.sort((a, b) => (b.totalDeposits || 0) - (a.totalDeposits || 0));
+  // តម្រៀបតាមសមតុល្យគណនីជាក់ស្ដែង ពីខ្ពស់មកទាប
+  usersList.sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0));
   let html = '';
   usersList.forEach((user, index) => {
     const isMe = user.uid === currentUser.uid;
     const displayName = isMe ? `${currentUser.name} (ខ្ញុំ)` : (user.name || '(…)');
     const photo = isMe ? currentUser.photo : (user.photo || '');
-    const count = isMe ? currentUser.totalDeposits : (user.totalDeposits || 0);
+    const userBal = isMe ? currentUser.balance : (Number(user.balance) || 0);
+    const maskedText = window.getMaskedRank(userBal);
     const uid = user.uid || 'N/A';
     html += `
       <div class="table-row table-body">
@@ -667,7 +677,7 @@ onValue(allUsersRef, (snapshot) => {
           <span class="name-text">${displayName}</span>
         </div>
         <div class="col-uid">${uid}</div>
-        <div class="col-count"${isMe ? ' id="myRowCount"' : ''}>${count}</div>
+        <div class="col-count"${isMe ? ' id="myRowCount"' : ''}>${maskedText}</div>
       </div>
     `;
   });
