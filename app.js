@@ -9,7 +9,6 @@ let CONFIG = {
   telegramLink: savedConfig.telegramLink || "https://t.me/",
   companyLogo: savedConfig.companyLogo || "https://i.ibb.co/Rkt5HqTQ/IMG-2370.jpg",
   companyName: savedConfig.companyName || "មាសបៃតង",
-  qrMerchantName: savedConfig.qrMerchantName || "BOBOTOU TOPUP",
   userBotToken: savedConfig.userBotToken || "8619333638:AAHMdVIKg-1yo1sK_44Fd9vrNyS5EecH2Yg",
   adminChatId: savedConfig.adminChatId || "6127032694",
   adminBotToken: savedConfig.adminBotToken || "8619333638:AAHMdVIKg-1yo1sK_44Fd9vrNyS5EecH2Yg",
@@ -19,10 +18,8 @@ let CONFIG = {
 function renderCompanyUI() {
   const logoEl = document.getElementById('companyLogoBadge');
   const nameEl = document.getElementById('companyNameText');
-  const qrMerchantEl = document.querySelector('.khqr-merchant');
   if (logoEl) logoEl.innerHTML = `<img src="${CONFIG.companyLogo}" alt="Company">`;
   if (nameEl) nameEl.innerText = CONFIG.companyName;
-  if (qrMerchantEl) qrMerchantEl.innerText = CONFIG.qrMerchantName;
 }
 renderCompanyUI();
 
@@ -87,7 +84,6 @@ async function loadGoogleSheetConfig() {
       if (data.telegramLink && data.telegramLink !== CONFIG.telegramLink) { CONFIG.telegramLink = data.telegramLink; isUpdated = true; }
       if (data.companyLogo && data.companyLogo !== CONFIG.companyLogo) { CONFIG.companyLogo = data.companyLogo; isUpdated = true; }
       if (data.companyName && data.companyName !== CONFIG.companyName) { CONFIG.companyName = data.companyName; isUpdated = true; }
-      if (data.qrMerchantName && data.qrMerchantName !== CONFIG.qrMerchantName) { CONFIG.qrMerchantName = data.qrMerchantName; isUpdated = true; }
       if (data.userBotToken && data.userBotToken !== CONFIG.userBotToken) { CONFIG.userBotToken = data.userBotToken; isUpdated = true; }
       if (data.adminChatId && data.adminChatId !== CONFIG.adminChatId) { CONFIG.adminChatId = data.adminChatId; isUpdated = true; }
       if (data.adminBotToken && data.adminBotToken !== CONFIG.adminBotToken) { CONFIG.adminBotToken = data.adminBotToken; isUpdated = true; }
@@ -128,6 +124,8 @@ async function checkAndSyncSheetTransaction(sheetTxn) {
       await update(txnRef, { status: 'done' });
       currentUser.totalDeposits = (currentUser.totalDeposits || 0) + 1;
       currentUser.baseBalance = (currentUser.baseBalance || 0.00) + val;
+      
+      // បូកបញ្ចូលគ្នា៖ ប្រាក់ដើម + ការប្រាក់សរុបក្នុងកូនជ្រូក
       currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0.00);
 
       if (currentUser.balance > (currentUser.maxPeak || 0.00)) {
@@ -184,15 +182,15 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     const statusLower = (item.status || '').toLowerCase();
     const existing = newInterests[item.id];
 
-    if (statusLower === 'done') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== 'done') {
+    if (statusLower === 'done' || statusLower === 'cashed_out') {
+      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== statusLower) {
         const intData = {
           id: item.id,
           date: existing ? existing.date : (item.date || getFormattedDateTime()),
           rate: item.rate || '+0.00%',
           amount: item.amount || '+0.00 USD',
           balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
-          status: 'done'
+          status: statusLower
         };
         newInterests[item.id] = intData;
         await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
@@ -215,11 +213,13 @@ async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSumma
     }
   }
 
+  // ចាប់យកតម្លៃការប្រាក់សរុបចេញពីកូនជ្រូក (Header Google Sheet) មកបូកចូលសមតុល្យគណនី
   let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
   let finalRate = totalRateSummary || "+0.00%";
 
   currentUser.totalInterestVal = totalIntVal;
 
+  // រូបមន្តបូកបញ្ចូលគ្នាពិតប្រាកដ៖ សមតុល្យ = ប្រាក់ដើម (baseBalance) + ការប្រាក់កូនជ្រូក (totalInterestVal)
   const newCalculatedBalance = (currentUser.baseBalance || 0.00) + totalIntVal;
 
   if (Math.abs(currentUser.balance - newCalculatedBalance) > 0.001) {
@@ -586,8 +586,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
