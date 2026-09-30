@@ -51,7 +51,6 @@ function getFormattedDateTime(d = new Date()) {
   return `${day}/${mon}/${yr} ${hr}:${min}`;
 }
 
-// មុខងារបម្លែងចំនួនទឹកប្រាក់ទៅជាសញ្ញាផ្កាយការពារឯកជនភាព (* សម្រាប់លេខ១ខ្ទង់)
 window.getMaskedRank = function(balance) {
   var intVal = Math.floor(Math.abs(Number(balance) || 0));
   var len = intVal.toString().length;
@@ -657,7 +656,6 @@ onValue(allUsersRef, (snapshot) => {
   if (!usersList.some(u => u.uid === currentUser.uid)) {
     usersList.push(currentUser);
   }
-  // តម្រៀបតាមសមតុល្យគណនីជាក់ស្ដែង ពីខ្ពស់មកទាប
   usersList.sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0));
   let html = '';
   usersList.forEach((user, index) => {
@@ -821,7 +819,78 @@ const pageAssets = document.getElementById('pageAssets');
 const pageDeposit = document.getElementById('pageDeposit');
 const pageHistory = document.getElementById('pageHistory');
 const pageInterest = document.getElementById('pageInterest');
+const pageLoan = document.getElementById('pageLoan');
 const switchDock = document.getElementById('switchDock');
+
+window.openLoanPage = function() {
+  pageAssets.classList.remove('active');
+  pageLoan.classList.add('active');
+  switchDock.style.display = 'none';
+  switchLoanTab('borrow');
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('borrowDateInput').value = today;
+  document.getElementById('repayActualDateInput').value = today;
+};
+
+window.closeLoanPage = function() {
+  pageLoan.classList.remove('active');
+  pageAssets.classList.add('active');
+  switchDock.style.display = 'flex';
+};
+
+window.switchLoanTab = function(type) {
+  var tabBorrow = document.getElementById('tabBorrow');
+  var tabRepay = document.getElementById('tabRepay');
+  var secBorrow = document.getElementById('loanBorrowSection');
+  var secRepay = document.getElementById('loanRepaySection');
+
+  if (type === 'borrow') {
+    tabBorrow.className = 'loan-tab-btn active-borrow';
+    tabRepay.className = 'loan-tab-btn';
+    secBorrow.classList.add('active');
+    secRepay.classList.remove('active');
+  } else {
+    tabBorrow.className = 'loan-tab-btn';
+    tabRepay.className = 'loan-tab-btn active-repay';
+    secBorrow.classList.remove('active');
+    secRepay.classList.add('active');
+  }
+};
+
+window.confirmLoanRequest = function() {
+  var amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  var bDate = document.getElementById('borrowDateInput').value;
+  var rDate = document.getElementById('repayDueDateInput').value;
+
+  if (amt <= 0) {
+    alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី!");
+    return;
+  }
+  if (!bDate || !rDate) {
+    alert("សូមជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ឱ្យបានត្រឹមត្រូវ!");
+    return;
+  }
+
+  alert("សំណើកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានផ្ញើជូន Admin រួចរាល់!");
+  closeLoanPage();
+};
+
+window.confirmRepayRequest = function() {
+  var amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
+  var actualDate = document.getElementById('repayActualDateInput').value;
+
+  if (amt <= 0) {
+    alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសង!");
+    return;
+  }
+  if (!actualDate) {
+    alert("សូមជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់!");
+    return;
+  }
+
+  alert("ការសងប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានបញ្ជាក់រួចរាល់!");
+  closeLoanPage();
+};
 
 window.openDepositPage = function() {
   pageAssets.classList.remove('active');
@@ -1013,6 +1082,7 @@ window.selectTab = function(tab) {
   pageHistory.classList.remove('active');
   pageDeposit.classList.remove('active');
   pageInterest.classList.remove('active');
+  pageLoan.classList.remove('active');
   switchDock.style.display = 'flex';
   
   if (tab === 'home') {
