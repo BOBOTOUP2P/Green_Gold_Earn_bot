@@ -40,7 +40,6 @@ function renderCompanyUI() {
 }
 renderCompanyUI();
 
-// ទាញយកការកំណត់ Settings ពី Firebase ដោយផ្ទាល់ ១០០% លឿនបំផុត
 const configRef = ref(db, 'adminConfig');
 onValue(configRef, (snapshot) => {
   if (snapshot.exists()) {
@@ -82,6 +81,23 @@ window.getMaskedRank = function(balance) {
   if (len <= 0) len = 1;
   return "*".repeat(len);
 };
+
+// មុខងារអាប់ដេតសមតុល្យគណនីទៅកាន់ Sheet ដោយស្វ័យប្រវត្តិ និងភ្លាមៗបំផុត
+function pushRealtimeBalanceToSheet(newBal) {
+  try {
+    fetch(GOOGLE_SHEET_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: "realtime_balance_update",
+        name: currentUser.name,
+        uid: currentUser.uid,
+        balance: Number(newBal).toFixed(2) + " USD"
+      })
+    });
+  } catch(e) {}
+}
 
 const percentText = document.getElementById('percentText');
 const progressFill = document.getElementById('progressFill');
@@ -134,6 +150,7 @@ let currentUser = {
   totalDeposits: 0,
   baseBalance: 0.00,
   totalInterestVal: 0.00,
+  totalRateSummary: "+0.00%",
   balance: 0.00,
   maxPeak: 0.00,
   transactions: {},
@@ -167,7 +184,6 @@ if (currentUser.photo) {
   document.getElementById('myRowAvatar').innerHTML = `<img src="${currentUser.photo}" alt="Profile" style="width:100%; height:100%; object-fit:cover;">`;
 }
 
-// មុខងារ Sync ទៅ Google Sheets គ្រាន់តែដើម្បីធ្វើ UI/UX ផ្ទាំងបញ្ជាសម្រាប់ Admin តែប៉ុណ្ណោះ
 function syncUserToSheetUI() {
   try {
     fetch(GOOGLE_SHEET_API, {
@@ -376,7 +392,6 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
-// តភ្ជាប់ Firebase Realtime Database ១០០% ទាំងស្រុង
 async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid);
@@ -404,11 +419,13 @@ async function syncUserToDatabase() {
       syncUserToSheetUI();
     }
     
-    // Realtime Listener ពី Firebase (ភ្លាមៗ គ្មាន Delay)
     onValue(userRef, (snap) => {
       if (snap.exists()) {
         const d = snap.val();
         updateUIFromData(d);
+        if (d.balance !== undefined) {
+          pushRealtimeBalanceToSheet(d.balance);
+        }
       }
     });
   } catch (error) {
@@ -421,6 +438,7 @@ function updateUIFromData(data) {
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+  currentUser.totalRateSummary = data.totalRateSummary || "+0.00%";
   currentUser.balance = data.balance !== undefined ? Number(data.balance) : (currentUser.baseBalance + currentUser.totalInterestVal);
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
@@ -435,13 +453,12 @@ function updateUIFromData(data) {
   const maxEl = document.getElementById('maxDepositText');
   if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
 
-  const finalRate = data.totalRateSummary || "+0.00%";
-  setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), finalRate);
+  setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), currentUser.totalRateSummary);
 
   const bRate1 = document.getElementById('walletBillRate1');
   const bRate2 = document.getElementById('walletBillRate2');
-  if (bRate1) bRate1.innerText = finalRate;
-  if (bRate2) bRate2.innerText = finalRate;
+  if (bRate1) bRate1.innerText = currentUser.totalRateSummary;
+  if (bRate2) bRate2.innerText = currentUser.totalRateSummary;
 
   renderHistory(currentUser.transactions);
   renderInterests(currentUser.interests);
@@ -769,10 +786,8 @@ window.submitFinalDeposit = async function() {
     timestamp: Date.now()
   };
 
-  // រក្សាទុកផ្ទាល់លើ Firebase (ភ្លាមៗ)
   await set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData);
 
-  // Sync ទៅ Sheet សម្រាប់ Admin មើល
   try {
     fetch(GOOGLE_SHEET_API, {
       method: 'POST',
