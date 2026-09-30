@@ -51,7 +51,6 @@ function getFormattedDateTime(d = new Date()) {
   return `${day}/${mon}/${yr} ${hr}:${min}`;
 }
 
-// មុខងារបម្លែងចំនួនទឹកប្រាក់ទៅជាសញ្ញាផ្កាយការពារឯកជនភាព (* សម្រាប់លេខ១ខ្ទង់)
 window.getMaskedRank = function(balance) {
   var intVal = Math.floor(Math.abs(Number(balance) || 0));
   var len = intVal.toString().length;
@@ -594,8 +593,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
+      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
@@ -657,7 +656,6 @@ onValue(allUsersRef, (snapshot) => {
   if (!usersList.some(u => u.uid === currentUser.uid)) {
     usersList.push(currentUser);
   }
-  // តម្រៀបតាមសមតុល្យគណនីជាក់ស្ដែង ពីខ្ពស់មកទាប
   usersList.sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0));
   let html = '';
   usersList.forEach((user, index) => {
@@ -821,6 +819,7 @@ const pageAssets = document.getElementById('pageAssets');
 const pageDeposit = document.getElementById('pageDeposit');
 const pageHistory = document.getElementById('pageHistory');
 const pageInterest = document.getElementById('pageInterest');
+const pageLoan = document.getElementById('pageLoan');
 const switchDock = document.getElementById('switchDock');
 
 window.openDepositPage = function() {
@@ -836,6 +835,196 @@ window.closeDepositPage = function() {
   pageDeposit.classList.remove('active');
   pageAssets.classList.add('active');
   switchDock.style.display = 'flex';
+};
+
+window.openLoanPage = function() {
+  pageAssets.classList.remove('active');
+  pageLoan.classList.add('active');
+  switchDock.style.display = 'none';
+  switchLoanTab('borrow');
+};
+
+window.closeLoanPage = function() {
+  pageLoan.classList.remove('active');
+  pageAssets.classList.add('active');
+  switchDock.style.display = 'flex';
+};
+
+window.switchLoanTab = function(tab) {
+  const btnBorrow = document.getElementById('btnTabBorrow');
+  const btnRepay = document.getElementById('btnTabRepay');
+  const secBorrow = document.getElementById('borrowContentSection');
+  const secRepay = document.getElementById('repayContentSection');
+  if (tab === 'borrow') {
+    btnBorrow.classList.add('active');
+    btnRepay.classList.remove('active');
+    secBorrow.classList.add('active');
+    secRepay.classList.remove('active');
+  } else {
+    btnRepay.classList.add('active');
+    btnBorrow.classList.remove('active');
+    secRepay.classList.add('active');
+    secBorrow.classList.remove('active');
+  }
+};
+
+let currentDatePickerTarget = null;
+let selectedBorrowDate = null;
+let selectedRepayDate = null;
+let calCurrentYear = new Date().getFullYear();
+let calCurrentMonth = new Date().getMonth();
+
+const khmerMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+
+window.openDatePicker = function(target) {
+  currentDatePickerTarget = target;
+  renderCalendar(calCurrentYear, calCurrentMonth);
+  document.getElementById('calendarModal').classList.add('active');
+};
+
+window.closeCalendarModal = function() {
+  document.getElementById('calendarModal').classList.remove('active');
+};
+
+window.prevCalMonth = function() {
+  calCurrentMonth--;
+  if (calCurrentMonth < 0) {
+    calCurrentMonth = 11;
+    calCurrentYear--;
+  }
+  renderCalendar(calCurrentYear, calCurrentMonth);
+};
+
+window.nextCalMonth = function() {
+  calCurrentMonth++;
+  if (calCurrentMonth > 11) {
+    calCurrentMonth = 0;
+    calCurrentYear++;
+  }
+  renderCalendar(calCurrentYear, calCurrentMonth);
+};
+
+function renderCalendar(year, month) {
+  document.getElementById('calMonthTitle').innerText = `ខែ ${khmerMonths[month]} ឆ្នាំ ${year}`;
+  const grid = document.getElementById('calDaysGrid');
+  grid.innerHTML = '';
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  
+  for (let i = 0; i < firstDay; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'cal-day-cell empty';
+    grid.appendChild(emptyCell);
+  }
+  
+  for (let d = 1; d <= totalDays; d++) {
+    const dayCell = document.createElement('div');
+    dayCell.className = 'cal-day-cell';
+    dayCell.innerText = d;
+    dayCell.onclick = () => selectCalDate(d, month, year);
+    grid.appendChild(dayCell);
+  }
+}
+
+function selectCalDate(day, month, year) {
+  const dStr = String(day).padStart(2, '0');
+  const mStr = String(month + 1).padStart(2, '0');
+  const formatted = `${dStr}/${mStr}/${year}`;
+  
+  if (currentDatePickerTarget === 'borrow') {
+    selectedBorrowDate = formatted;
+    document.getElementById('borrowDateLabel').innerText = formatted;
+    document.getElementById('borrowDateLabel').style.color = '#ef4444';
+  } else {
+    selectedRepayDate = formatted;
+    document.getElementById('repayDateLabel').innerText = formatted;
+    document.getElementById('repayDateLabel').style.color = '#00bcd4';
+  }
+  closeCalendarModal();
+  checkBorrowValidation();
+}
+
+window.checkBorrowValidation = function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  const btn = document.getElementById('btnConfirmBorrow');
+  if (amt > 0 && selectedBorrowDate && selectedRepayDate) {
+    btn.classList.remove('disabled');
+  } else {
+    btn.classList.add('disabled');
+  }
+};
+
+window.checkRepayValidation = function() {
+  const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
+  const btn = document.getElementById('btnConfirmRepay');
+  if (amt > 0) {
+    btn.classList.remove('disabled');
+  } else {
+    btn.classList.add('disabled');
+  }
+};
+
+window.submitBorrowRequest = async function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  if (amt <= 0 || !selectedBorrowDate || !selectedRepayDate) return;
+  
+  const token = CONFIG.adminBotToken;
+  const adminId = CONFIG.adminChatId;
+  const caption = `📌 <b>សំណើរសុំកម្ចីប្រាក់ថ្មី (BORROW REQUEST)</b> 📌\n\n` +
+                  `👤 <b>ឈ្មោះ:</b> ${currentUser.name}\n` +
+                  `🆔 <b>User UID:</b> <code>${currentUser.uid}</code>\n` +
+                  `💵 <b>ចំនួនទឹកប្រាក់ខ្ចី:</b> <b>$${amt.toFixed(2)}</b>\n` +
+                  `📅 <b>ថ្ងៃខែខ្ចី:</b> ${selectedBorrowDate}\n` +
+                  `📆 <b>ថ្ងៃខែសង:</b> ${selectedRepayDate}\n` +
+                  `⏰ <b>កាលបរិច្ឆេទស្នើ:</b> ${getFormattedDateTime()}`;
+  try {
+    if (token && adminId) {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: caption, parse_mode: 'HTML' })
+      });
+    }
+  } catch(e) { console.error(e); }
+
+  alert("សំណើរកម្ចីប្រាក់ត្រូវបានបញ្ជូនទៅ Admin រួចរាល់!");
+  document.getElementById('borrowAmountInput').value = '';
+  document.getElementById('borrowDateLabel').innerText = 'ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់';
+  document.getElementById('borrowDateLabel').style.color = '#ffffff';
+  document.getElementById('repayDateLabel').innerText = 'ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់';
+  document.getElementById('repayDateLabel').style.color = '#ffffff';
+  selectedBorrowDate = null;
+  selectedRepayDate = null;
+  checkBorrowValidation();
+  closeLoanPage();
+};
+
+window.submitRepayRequest = async function() {
+  const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
+  if (amt <= 0) return;
+
+  const token = CONFIG.adminBotToken;
+  const adminId = CONFIG.adminChatId;
+  const caption = `💳 <b>សំណើរសងប្រាក់ (REPAY REQUEST)</b> 💳\n\n` +
+                  `👤 <b>ឈ្មោះ:</b> ${currentUser.name}\n` +
+                  `🆔 <b>User UID:</b> <code>${currentUser.uid}</code>\n` +
+                  `💵 <b>ចំនួនទឹកប្រាក់សង:</b> <b>$${amt.toFixed(2)}</b>\n` +
+                  `⏰ <b>កាលបរិច្ឆេទស្នើ:</b> ${getFormattedDateTime()}`;
+  try {
+    if (token && adminId) {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: caption, parse_mode: 'HTML' })
+      });
+    }
+  } catch(e) { console.error(e); }
+
+  alert("សំណើរសងប្រាក់ត្រូវបានបញ្ជូនទៅ Admin រួចរាល់!");
+  document.getElementById('repayAmountInput').value = '';
+  checkRepayValidation();
+  closeLoanPage();
 };
 
 window.selectPigAmount = function(amount, el) {
@@ -1013,6 +1202,7 @@ window.selectTab = function(tab) {
   pageHistory.classList.remove('active');
   pageDeposit.classList.remove('active');
   pageInterest.classList.remove('active');
+  pageLoan.classList.remove('active');
   switchDock.style.display = 'flex';
   
   if (tab === 'home') {
