@@ -82,7 +82,6 @@ window.getMaskedRank = function(balance) {
   return "*".repeat(len);
 };
 
-// មុខងារអាប់ដេតសមតុល្យគណនីទៅកាន់ Sheet ដោយស្វ័យប្រវត្តិ និងភ្លាមៗបំផុត
 function pushRealtimeBalanceToSheet(newBal) {
   try {
     fetch(GOOGLE_SHEET_API, {
@@ -254,7 +253,8 @@ function showSuccessPopup(txn) {
 
   document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
   document.getElementById('pageSuccess').classList.add('active');
-  switchDock.style.display = 'none';
+  const dock = document.getElementById('switchDock');
+  if (dock) dock.style.display = 'none';
   lucide.createIcons();
 }
 
@@ -392,6 +392,7 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
+// ស្ដាប់ទិន្នន័យពី Firebase Realtime ១០០% និងចាប់ផ្ដើមបង្ហាញផ្ទាំងទទួលបានជោគជ័យ
 async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid);
@@ -419,9 +420,23 @@ async function syncUserToDatabase() {
       syncUserToSheetUI();
     }
     
+    // Realtime Listener
     onValue(userRef, (snap) => {
       if (snap.exists()) {
         const d = snap.val();
+        
+        // ពិនិត្យរកមើលប្រតិបត្តិការ Done ថ្មីៗ ដើម្បីបង្ហាញផ្ទាំងជោគជ័យភ្លាមៗ
+        if (d.transactions) {
+          Object.values(d.transactions).forEach(txn => {
+            const st = (txn.status || '').toLowerCase();
+            if (st === 'done' && !shownPopups.includes(txn.id)) {
+              showSuccessPopup(txn);
+              shownPopups.push(txn.id);
+              localStorage.setItem("shown_success_popups", JSON.stringify(shownPopups));
+            }
+          });
+        }
+
         updateUIFromData(d);
         if (d.balance !== undefined) {
           pushRealtimeBalanceToSheet(d.balance);
