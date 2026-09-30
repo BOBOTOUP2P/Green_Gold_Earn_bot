@@ -112,22 +112,6 @@
   </div>
 </div>
 
-<!-- Modal ប្រតិទិនខ្មែរ -->
-<div id="khmerCalendarModal" class="calendar-modal" onclick="closeKhmerCalendar()">
-  <div class="calendar-card" onclick="event.stopPropagation()">
-    <div class="calendar-header">
-      <button class="cal-nav-btn" onclick="changeCalMonth(-1)"><i data-lucide="chevron-left"></i></button>
-      <div class="cal-month-year" id="calMonthYear">ខែ... ឆ្នាំ...</div>
-      <button class="cal-nav-btn" onclick="changeCalMonth(1)"><i data-lucide="chevron-right"></i></button>
-    </div>
-    <div class="cal-weekdays">
-      <span>អា</span><span>ច</span><span>អ</span><span>ពុ</span><span>ព្រ</span><span>សុ</span><span>ស</span>
-    </div>
-    <div class="cal-days-grid" id="calDaysGrid"></div>
-    <button class="cal-close-btn" onclick="closeKhmerCalendar()">បិទ</button>
-  </div>
-</div>
-
 <div class="app-container">
   
   <div class="page-view home-content active" id="pageHome">
@@ -193,14 +177,6 @@
                   <span class="wallet-val" id="balanceVal">0.00</span>
                   <span class="wallet-cur">USD</span>
                 </div>
-                
-                <!-- ប៊ូតុង កម្ចី / សង ផ្នែកខាងឆ្វេងក្រោម -->
-                <div class="wallet-loan-tag" onclick="event.stopPropagation(); openLoanPage();">
-                  <i data-lucide="hand-coins"></i>
-                  <span>កម្ចី / សង</span>
-                </div>
-
-                <!-- ប៊ូតុង ដាក់ប្រាក់ ផ្នែកខាងស្ដាំក្រោម -->
                 <div class="wallet-deposit-tag" onclick="event.stopPropagation(); openDepositPage();">
                   <i data-lucide="arrow-down"></i>
                   <span>ដាក់ប្រាក់</span>
@@ -280,75 +256,6 @@
         <div class="row-left"><i data-lucide="dollar-sign"></i><span>ទឹកប្រាក់អតិបរមា សរុបUSD:</span></div>
         <div class="row-right txt-cyan"><span id="maxDepositText">0.00 USD</span></div>
       </div>
-    </div>
-  </div>
-
-  <!-- ទំព័រ កម្ចី / សង (Loan / Repay Page) -->
-  <div class="page-view" id="pageLoan">
-    <div class="history-topbar">
-      <button class="history-back-btn" onclick="closeLoanPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
-      <div class="history-topbar-title">កម្ចី / សងប្រាក់</div>
-      <div style="width: 38px;"></div>
-    </div>
-
-    <!-- Switch Tab កម្ចី (ក្រហមថ្លាឌិត) និង សង (ទឹកសមុទ្រថ្លាឌិត) -->
-    <div class="loan-tab-container">
-      <button class="loan-toggle-btn btn-loan active" id="btnTabBorrow" onclick="switchLoanSubTab('borrow')">កម្ចី</button>
-      <button class="loan-toggle-btn btn-repay" id="btnTabRepay" onclick="switchLoanSubTab('repay')">សង</button>
-    </div>
-
-    <!-- ផ្នែកកម្ចីប្រាក់ (Borrow Content) -->
-    <div id="subTabBorrowContent" style="display:flex; flex-direction:column; width:100%; gap:14px; animation: fadeIn 0.25s ease;">
-      <!-- ប្រអប់បញ្ចូលទឹកប្រាក់ខ្ចី -->
-      <div class="loan-input-card">
-        <div class="loan-input-lbl">ចំនួនទឹកប្រាក់ដែលត្រូវកម្ចី (USD)</div>
-        <div class="loan-field-box">
-          <span class="loan-currency-symbol">$</span>
-          <input type="number" id="inputBorrowAmount" class="loan-amount-input" placeholder="0.00" min="1" step="any">
-        </div>
-      </div>
-
-      <!-- ប្រអប់ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់ -->
-      <div class="loan-date-card" onclick="openKhmerCalendar('borrow')">
-        <div class="loan-date-left">
-          <i data-lucide="calendar" class="loan-date-icon"></i>
-          <div class="loan-date-info">
-            <span class="loan-date-sub">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់</span>
-            <span class="loan-date-val" id="dispBorrowDate">ជ្រើសរើសកាលបរិច្ឆេទ...</span>
-          </div>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-
-      <!-- ប្រអប់ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់ -->
-      <div class="loan-date-card" onclick="openKhmerCalendar('repay')">
-        <div class="loan-date-left">
-          <i data-lucide="calendar-check" class="loan-date-icon" style="color:#00bcd4;"></i>
-          <div class="loan-date-info">
-            <span class="loan-date-sub">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</span>
-            <span class="loan-date-val" id="dispRepayDate">ជ្រើសរើសកាលបរិច្ឆេទ...</span>
-          </div>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-
-      <!-- ប៊ូតុងបញ្ជាក់សារឡើងវិញ -->
-      <button class="loan-submit-btn" id="btnConfirmLoan" onclick="submitLoanRequest()">
-        <span>បញ្ជាក់សារឡើងវិញ</span>
-      </button>
-    </div>
-
-    <!-- ផ្នែកសងប្រាក់ (Repay Content) -->
-    <div id="subTabRepayContent" style="display:none; flex-direction:column; width:100%; gap:14px; animation: fadeIn 0.25s ease;">
-      <div class="repay-info-card">
-        <div style="font-size:15px; font-weight:700; color:#00bcd4; margin-bottom:8px;">ព័ត៌មានការសងប្រាក់</div>
-        <div style="font-size:13.5px; color:#cbd5e1; line-height:1.6;">
-          សូមពិនិត្យមើលទឹកប្រាក់ដែលត្រូវសង និងកាលបរិច្ឆេទកំណត់ខាងក្រោម រួចធ្វើការទូទាត់សងត្រឡប់មកវិញ។
-        </div>
-      </div>
-      <button class="loan-submit-btn" style="background:#00bcd4; color:#000000;" onclick="submitRepayRequest()">
-        <span>ទូទាត់សងប្រាក់</span>
-      </button>
     </div>
   </div>
 
