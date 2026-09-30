@@ -3,6 +3,20 @@ import { getDatabase, ref, set, get, onValue, update, remove } from "https://www
 
 const GOOGLE_SHEET_API = "https://script.google.com/macros/s/AKfycbx7i3XFhXpMxl5ps9aIosFpBly-ih0y9e87yIJ5lMQejUcRhygF6rpBDavbaXnrDzX8/exec";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyCjyPTgZrs_lYXXIVn0hZz3H64U47jEvjo",
+  authDomain: "kbk-wallet-app.firebaseapp.com",
+  databaseURL: "https://kbk-wallet-app-default-rtdb.firebaseio.com",
+  projectId: "kbk-wallet-app",
+  storageBucket: "kbk-wallet-app.firebasestorage.app",
+  messagingSenderId: "298749872136",
+  appId: "1:298749872136:web:0630e7b1efea1308c329bd",
+  measurementId: "G-S35PQT4V2J"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 let savedConfig = JSON.parse(localStorage.getItem("cached_admin_config") || "{}");
 
 let CONFIG = {
@@ -25,6 +39,17 @@ function renderCompanyUI() {
   if (qrMerchantEl) qrMerchantEl.innerText = CONFIG.qrMerchantName;
 }
 renderCompanyUI();
+
+// ទាញយកការកំណត់ Settings ពី Firebase ដោយផ្ទាល់ ១០០% លឿនបំផុត
+const configRef = ref(db, 'adminConfig');
+onValue(configRef, (snapshot) => {
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    CONFIG = { ...CONFIG, ...data };
+    localStorage.setItem("cached_admin_config", JSON.stringify(CONFIG));
+    renderCompanyUI();
+  }
+});
 
 let shownPopups = JSON.parse(localStorage.getItem("shown_success_popups") || "[]");
 let uploadedReceiptFile = null;
@@ -56,210 +81,6 @@ window.getMaskedRank = function(balance) {
   var len = intVal.toString().length;
   if (len <= 0) len = 1;
   return "*".repeat(len);
-};
-
-function pushRealtimeBalanceToSheet(newBal) {
-  try {
-    fetch(GOOGLE_SHEET_API, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: "realtime_balance_update",
-        name: currentUser.name,
-        uid: currentUser.uid,
-        balance: Number(newBal).toFixed(2) + " USD"
-      })
-    });
-  } catch(e) {
-    console.error("Auto Sync Balance to Sheet Failed:", e);
-  }
-}
-
-async function checkAndUpdateMaxPeak(currentBal) {
-  if (currentBal > (currentUser.maxPeak || 0.00)) {
-    currentUser.maxPeak = currentBal;
-    await update(ref(db, `users/${currentUser.uid}`), { maxPeak: currentUser.maxPeak });
-  }
-  const maxEl = document.getElementById('maxDepositText');
-  if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
-}
-
-async function loadGoogleSheetConfig() {
-  try {
-    const res = await fetch(`${GOOGLE_SHEET_API}?uid=${currentUser.uid}&name=${encodeURIComponent(currentUser.name)}`);
-    const data = await res.json();
-    if (data) {
-      let isUpdated = false;
-      if (data.telegramLink && data.telegramLink !== CONFIG.telegramLink) { CONFIG.telegramLink = data.telegramLink; isUpdated = true; }
-      if (data.companyLogo && data.companyLogo !== CONFIG.companyLogo) { CONFIG.companyLogo = data.companyLogo; isUpdated = true; }
-      if (data.companyName && data.companyName !== CONFIG.companyName) { CONFIG.companyName = data.companyName; isUpdated = true; }
-      if (data.qrMerchantName && data.qrMerchantName !== CONFIG.qrMerchantName) { CONFIG.qrMerchantName = data.qrMerchantName; isUpdated = true; }
-      if (data.userBotToken && data.userBotToken !== CONFIG.userBotToken) { CONFIG.userBotToken = data.userBotToken; isUpdated = true; }
-      if (data.adminChatId && data.adminChatId !== CONFIG.adminChatId) { CONFIG.adminChatId = data.adminChatId; isUpdated = true; }
-      if (data.adminBotToken && data.adminBotToken !== CONFIG.adminBotToken) { CONFIG.adminBotToken = data.adminBotToken; isUpdated = true; }
-      if (data.qrCodes) { CONFIG.qrCodes = data.qrCodes; isUpdated = true; }
-      
-      if (isUpdated) {
-        localStorage.setItem("cached_admin_config", JSON.stringify(CONFIG));
-        renderCompanyUI();
-      }
-
-      if (data.transactions && data.transactions.length > 0) {
-        data.transactions.forEach(t => {
-          if (t.uid === currentUser.uid) {
-            checkAndSyncSheetTransaction(t);
-          }
-        });
-      }
-
-      if (data.userInterests) {
-        syncUserInterests(data.userInterests, data.totalInterestSummary, data.totalRateSummary);
-      }
-    }
-  } catch (err) {
-    console.error("Google Sheet Sync Error:", err);
-  }
-}
-
-async function checkAndSyncSheetTransaction(sheetTxn) {
-  const txnRef = ref(db, `users/${currentUser.uid}/transactions/${sheetTxn.id}`);
-  const snap = await get(txnRef);
-  if (snap.exists()) {
-    const dbTxn = snap.val();
-    const currentStatus = (sheetTxn.status || '').trim().toLowerCase();
-    const prevStatus = (dbTxn.status || '').trim().toLowerCase();
-    const val = parseFloat(sheetTxn.amount.replace(/[^0-9.]/g, '')) || 0;
-
-    if (currentStatus === 'done' && prevStatus !== 'done') {
-      await update(txnRef, { status: 'done' });
-      currentUser.totalDeposits = (currentUser.totalDeposits || 0) + 1;
-      currentUser.baseBalance = (currentUser.baseBalance || 0.00) + val;
-      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0.00);
-
-      if (currentUser.balance > (currentUser.maxPeak || 0.00)) {
-        currentUser.maxPeak = currentUser.balance;
-      }
-
-      await update(ref(db, `users/${currentUser.uid}`), {
-        totalDeposits: currentUser.totalDeposits,
-        baseBalance: currentUser.baseBalance,
-        balance: currentUser.balance,
-        maxPeak: currentUser.maxPeak
-      });
-
-      pushRealtimeBalanceToSheet(currentUser.balance);
-      const maxEl = document.getElementById('maxDepositText');
-      if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
-
-      if (!shownPopups.includes(sheetTxn.id)) {
-        showSuccessPopup(sheetTxn);
-        shownPopups.push(sheetTxn.id);
-        localStorage.setItem("shown_success_popups", JSON.stringify(shownPopups));
-      }
-    } 
-    else if (currentStatus === 'refuse' && prevStatus === 'done') {
-      await update(txnRef, { status: 'refuse' });
-      currentUser.totalDeposits = Math.max(0, (currentUser.totalDeposits || 1) - 1);
-      currentUser.baseBalance = Math.max(0, (currentUser.baseBalance || 0.00) - val);
-      currentUser.balance = currentUser.baseBalance + (currentUser.totalInterestVal || 0.00);
-
-      currentUser.maxPeak = Math.max(0, (currentUser.maxPeak || 0.00) - val);
-
-      await update(ref(db, `users/${currentUser.uid}`), {
-        totalDeposits: currentUser.totalDeposits,
-        baseBalance: currentUser.baseBalance,
-        balance: currentUser.balance,
-        maxPeak: currentUser.maxPeak
-      });
-
-      pushRealtimeBalanceToSheet(currentUser.balance);
-      const maxEl = document.getElementById('maxDepositText');
-      if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
-    } 
-    else if (currentStatus === 'refuse' && prevStatus !== 'refuse') {
-      await update(txnRef, { status: 'refuse' });
-    }
-  }
-}
-
-async function syncUserInterests(sheetInterests, totalIntSummary, totalRateSummary) {
-  let isChanged = false;
-  let newInterests = { ...(currentUser.interests || {}) };
-
-  for (let item of sheetInterests) {
-    const statusLower = (item.status || '').toLowerCase();
-    const existing = newInterests[item.id];
-
-    if (statusLower === 'done' || statusLower === 'cashed_out') {
-      if (!existing || existing.amount !== item.amount || existing.rate !== item.rate || existing.status !== statusLower) {
-        const intData = {
-          id: item.id,
-          date: existing ? existing.date : (item.date || getFormattedDateTime()),
-          rate: item.rate || '+0.00%',
-          amount: item.amount || '+0.00 USD',
-          balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
-          status: statusLower
-        };
-        newInterests[item.id] = intData;
-        await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
-        isChanged = true;
-      }
-    } else if (statusLower === 'delete') {
-      if (!existing || existing.status !== 'delete') {
-        const intData = {
-          id: item.id,
-          date: existing ? existing.date : (item.date || getFormattedDateTime()),
-          rate: item.rate || '+0.00%',
-          amount: item.amount || '+0.00 USD',
-          balance: existing ? existing.balance : (currentUser.balance.toFixed(2) + ' USD'),
-          status: 'delete'
-        };
-        newInterests[item.id] = intData;
-        await set(ref(db, `users/${currentUser.uid}/interests/${item.id}`), intData);
-        isChanged = true;
-      }
-    }
-  }
-
-  let totalIntVal = parseFloat((totalIntSummary || '0').replace(/[^0-9.]/g, '')) || 0;
-  let finalRate = totalRateSummary || "+0.00%";
-
-  currentUser.totalInterestVal = totalIntVal;
-
-  const newCalculatedBalance = (currentUser.baseBalance || 0.00) + totalIntVal;
-
-  if (Math.abs(currentUser.balance - newCalculatedBalance) > 0.001) {
-    currentUser.balance = newCalculatedBalance;
-    checkAndUpdateMaxPeak(currentUser.balance);
-    await update(ref(db, `users/${currentUser.uid}`), { 
-      balance: currentUser.balance, 
-      totalInterestVal: currentUser.totalInterestVal 
-    });
-    const balVal = document.getElementById('balanceVal');
-    if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
-    pushRealtimeBalanceToSheet(currentUser.balance);
-  }
-
-  setPigBellyDisplay(totalIntVal.toFixed(2), finalRate);
-  
-  const bRate1 = document.getElementById('walletBillRate1');
-  const bRate2 = document.getElementById('walletBillRate2');
-  if (bRate1) bRate1.innerText = finalRate;
-  if (bRate2) bRate2.innerText = finalRate;
-
-  if (isChanged) {
-    currentUser.interests = newInterests;
-    renderInterests(currentUser.interests);
-  }
-}
-
-setInterval(loadGoogleSheetConfig, 3000);
-
-window.openContactTelegram = function() {
-  if (CONFIG.telegramLink) {
-    window.open(CONFIG.telegramLink, '_blank');
-  }
 };
 
 const percentText = document.getElementById('percentText');
@@ -297,20 +118,6 @@ function finishLoading() {
 }
 
 startLoading();
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCjyPTgZrs_lYXXIVn0hZz3H64U47jEvjo",
-  authDomain: "kbk-wallet-app.firebaseapp.com",
-  databaseURL: "https://kbk-wallet-app-default-rtdb.firebaseio.com",
-  projectId: "kbk-wallet-app",
-  storageBucket: "kbk-wallet-app.firebasestorage.app",
-  messagingSenderId: "298749872136",
-  appId: "1:298749872136:web:0630e7b1efea1308c329bd",
-  measurementId: "G-S35PQT4V2J"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 
 const tg = window.Telegram?.WebApp;
 if (tg) {
@@ -360,7 +167,8 @@ if (currentUser.photo) {
   document.getElementById('myRowAvatar').innerHTML = `<img src="${currentUser.photo}" alt="Profile" style="width:100%; height:100%; object-fit:cover;">`;
 }
 
-function syncUserSheetToGoogle() {
+// មុខងារ Sync ទៅ Google Sheets គ្រាន់តែដើម្បីធ្វើ UI/UX ផ្ទាំងបញ្ជាសម្រាប់ Admin តែប៉ុណ្ណោះ
+function syncUserToSheetUI() {
   try {
     fetch(GOOGLE_SHEET_API, {
       method: 'POST',
@@ -373,9 +181,7 @@ function syncUserSheetToGoogle() {
         balance: currentUser.balance.toFixed(2) + " USD"
       })
     });
-  } catch(e) {
-    console.error("Sync User Sheet Failed:", e);
-  }
+  } catch(e) {}
 }
 
 async function sendAdminTelegramAlert(txn, photoFile) {
@@ -570,6 +376,7 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
+// តភ្ជាប់ Firebase Realtime Database ១០០% ទាំងស្រុង
 async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid);
@@ -583,33 +390,25 @@ async function syncUserToDatabase() {
         baseBalance: 0.00,
         balance: 0.00,
         totalInterestVal: 0.00,
+        totalRateSummary: "+0.00%",
         maxPeak: 0.00,
         transactions: {},
         interests: {},
         createdAt: Date.now()
       });
-      syncUserSheetToGoogle();
+      syncUserToSheetUI();
     } else {
       const data = snapshot.val();
-      currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
-      currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-      currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
-      currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
-      currentUser.transactions = data.transactions || {};
-      currentUser.interests = data.interests || {};
       updateUIFromData(data);
       await update(userRef, { name: currentUser.name, photo: currentUser.photo });
-      syncUserSheetToGoogle();
+      syncUserToSheetUI();
     }
     
+    // Realtime Listener ពី Firebase (ភ្លាមៗ គ្មាន Delay)
     onValue(userRef, (snap) => {
       if (snap.exists()) {
         const d = snap.val();
         updateUIFromData(d);
-        if (d.balance !== undefined) {
-          pushRealtimeBalanceToSheet(d.balance);
-        }
       }
     });
   } catch (error) {
@@ -622,18 +421,27 @@ function updateUIFromData(data) {
   currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
   currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
-  currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
+  currentUser.balance = data.balance !== undefined ? Number(data.balance) : (currentUser.baseBalance + currentUser.totalInterestVal);
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
   currentUser.interests = data.interests || {};
   
   const rowCount = document.getElementById('myRowCount');
   if (rowCount) rowCount.innerText = window.getMaskedRank(currentUser.balance);
+  
   const balVal = document.getElementById('balanceVal');
   if (balVal && !isHidden) balVal.innerText = currentUser.balance.toFixed(2);
   
   const maxEl = document.getElementById('maxDepositText');
   if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
+
+  const finalRate = data.totalRateSummary || "+0.00%";
+  setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), finalRate);
+
+  const bRate1 = document.getElementById('walletBillRate1');
+  const bRate2 = document.getElementById('walletBillRate2');
+  if (bRate1) bRate1.innerText = finalRate;
+  if (bRate2) bRate2.innerText = finalRate;
 
   renderHistory(currentUser.transactions);
   renderInterests(currentUser.interests);
@@ -961,8 +769,10 @@ window.submitFinalDeposit = async function() {
     timestamp: Date.now()
   };
 
+  // រក្សាទុកផ្ទាល់លើ Firebase (ភ្លាមៗ)
   await set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData);
 
+  // Sync ទៅ Sheet សម្រាប់ Admin មើល
   try {
     fetch(GOOGLE_SHEET_API, {
       method: 'POST',
@@ -970,9 +780,7 @@ window.submitFinalDeposit = async function() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(txnData)
     });
-  } catch(e) {
-    console.error("Save to Sheet Error:", e);
-  }
+  } catch(e) {}
 
   sendAdminTelegramAlert(txnData, uploadedReceiptFile);
 
