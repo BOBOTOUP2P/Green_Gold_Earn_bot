@@ -177,6 +177,14 @@
                   <span class="wallet-val" id="balanceVal">0.00</span>
                   <span class="wallet-cur">USD</span>
                 </div>
+                
+                <!-- ប៊ូតុង កម្ចី / សង នៅខាងឆ្វេងក្រោម -->
+                <div class="wallet-loan-tag" onclick="event.stopPropagation(); openLoanPage();">
+                  <i data-lucide="repeat"></i>
+                  <span>កម្ចី / សង</span>
+                </div>
+
+                <!-- ប៊ូតុង ដាក់ប្រាក់ នៅខាងស្ដាំក្រោម -->
                 <div class="wallet-deposit-tag" onclick="event.stopPropagation(); openDepositPage();">
                   <i data-lucide="arrow-down"></i>
                   <span>ដាក់ប្រាក់</span>
@@ -256,6 +264,74 @@
         <div class="row-left"><i data-lucide="dollar-sign"></i><span>ទឹកប្រាក់អតិបរមា សរុបUSD:</span></div>
         <div class="row-right txt-cyan"><span id="maxDepositText">0.00 USD</span></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ទំព័រ កម្ចី / សង (Loan Page) -->
+  <div class="page-view" id="pageLoan">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="closeLoanPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">កម្ចី / សងប្រាក់</div>
+      <div style="width: 38px;"></div>
+    </div>
+
+    <div class="loan-tabs-wrapper">
+      <button class="loan-tab-btn active-borrow" id="tabBorrow" onclick="switchLoanTab('borrow')">កម្ចី</button>
+      <button class="loan-tab-btn" id="tabRepay" onclick="switchLoanTab('repay')">សង</button>
+    </div>
+
+    <!-- ផ្នែកកម្ចីប្រាក់ -->
+    <div id="loanBorrowSection" class="loan-section active">
+      <div class="loan-input-card">
+        <div class="loan-input-title">ចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី ($)</div>
+        <div class="loan-input-box">
+          <span class="loan-currency-symbol">$</span>
+          <input type="number" id="borrowAmountInput" placeholder="0.00" min="1" step="any">
+        </div>
+      </div>
+
+      <div class="loan-date-group">
+        <div class="loan-date-item">
+          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់</label>
+          <div class="loan-date-picker-box">
+            <input type="date" id="borrowDateInput">
+            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <div class="loan-date-item">
+          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</label>
+          <div class="loan-date-picker-box">
+            <input type="date" id="repayDueDateInput">
+            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <button class="loan-confirm-btn" onclick="confirmLoanRequest()">បញ្ជាក់សារឡើងវិញ</button>
+    </div>
+
+    <!-- ផ្នែកសងប្រាក់ -->
+    <div id="loanRepaySection" class="loan-section">
+      <div class="loan-input-card">
+        <div class="loan-input-title">ចំនួនទឹកប្រាក់ដែលត្រូវសង ($)</div>
+        <div class="loan-input-box">
+          <span class="loan-currency-symbol" style="color: #00bcd4;">$</span>
+          <input type="number" id="repayAmountInput" placeholder="0.00" min="1" step="any">
+        </div>
+      </div>
+
+      <div class="loan-date-group">
+        <div class="loan-date-item">
+          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់ជាក់ស្ដែង</label>
+          <div class="loan-date-picker-box">
+            <input type="date" id="repayActualDateInput">
+            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <button class="loan-confirm-btn repay-mode" onclick="confirmRepayRequest()">បញ្ជាក់ការសងប្រាក់</button>
     </div>
   </div>
 
