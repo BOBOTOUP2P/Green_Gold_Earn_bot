@@ -36,8 +36,9 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .header-col-name{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:6px;}
 .name-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.8px;font-weight:500;}
 .col-uid{flex:1.1;text-align:center;font-size:13px;white-space:nowrap;}
-.col-count{flex:1.1;text-align:right;font-size:15px;font-weight:700;color:#00bcd4;letter-spacing:2px;white-space:nowrap;}
+.col-count{flex:1.3;text-align:right;font-size:14.5px;white-space:nowrap;letter-spacing:1px;}
 .table-header .col-uid{color:#00bcd4;}
+.table-body .col-count{color:#00bcd4;font-weight:700;}
 .mini-profile-avatar{width:25px;height:25px;border-radius:50%;border:1.3px solid #71717a;background:radial-gradient(circle,#f59e0b 35%,#05684d 75%,#022c22 100%);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;cursor:pointer;transition:transform 0.15s ease;}
 .mini-profile-avatar:active{transform:scale(0.85);}
 .mini-profile-avatar svg{width:12px;height:12px;color:#ffffff;}
@@ -82,12 +83,12 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .wallet-amount{z-index:5;display:inline-flex;align-items:baseline;gap:6px;user-select:none;}
 .wallet-val{font-size:34px;font-weight:800;color:#ffffff;letter-spacing:0.5px;}
 .wallet-cur{font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.5px;}
-.wallet-loan-tag{position:absolute;bottom:14px;left:18px;z-index:6;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background-color:rgba(255,255,255,0.05);border:1.4px dashed #71717a;border-radius:8px;color:#e4e4e7;font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s ease;}
-.wallet-loan-tag:active{transform:scale(0.92);background-color:rgba(255,255,255,0.1);border-color:#a1a1aa;}
-.wallet-loan-tag svg{width:13px;height:13px;stroke-width:2.2;color:#e4e4e7;}
 .wallet-deposit-tag{position:absolute;bottom:14px;right:18px;z-index:6;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background-color:rgba(255,255,255,0.05);border:1.4px dashed #71717a;border-radius:8px;color:#e4e4e7;font-size:12.5px;font-weight:600;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s ease;}
 .wallet-deposit-tag:active{transform:scale(0.92);background-color:rgba(255,255,255,0.1);border-color:#a1a1aa;}
 .wallet-deposit-tag svg{width:13px;height:13px;stroke-width:2.5;color:#e4e4e7;}
+.wallet-loan-tag{position:absolute;bottom:14px;left:18px;z-index:6;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background-color:rgba(255,255,255,0.05);border:1.4px dashed #71717a;border-radius:8px;color:#e4e4e7;font-size:12.5px;font-weight:600;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s ease;}
+.wallet-loan-tag:active{transform:scale(0.92);background-color:rgba(255,255,255,0.1);border-color:#a1a1aa;}
+.wallet-loan-tag svg{width:13px;height:13px;stroke-width:2.5;color:#e4e4e7;}
 .wallet-flap{position:absolute;right:-8px;top:42px;width:85px;height:54px;background-color:#0b0b0f;border:1.4px solid #71717a;border-radius:10px 25px 25px 10px;z-index:4;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;transition:all 0.3s ease;}
 .wallet-button{width:22px;height:22px;background-color:#27272e;border:1.4px solid #71717a;border-radius:50%;}
 .wallet-container.open .bill-1{transform:translateY(-88px) rotate(8deg);}
@@ -109,6 +110,46 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .telegram-badge{background-color:#0e0e12;border:1.3px solid #71717a;color:#ffffff;font-size:13px;font-weight:600;padding:5px 12px;border-radius:8px;letter-spacing:0.3px;cursor:pointer;display:inline-block;transition:all 0.2s ease;}
 .telegram-badge:active{background-color:#1f1f26;border-color:#a1a1aa;}
 .txt-cyan{color:#00bcd4;font-weight:600;}
+
+/* ទម្រង់ផ្ទាំងកម្ចី/សងប្រាក់ (Loan Page Styling) */
+.loan-tab-container{display:flex;width:100%;gap:10px;margin-bottom:16px;user-select:none;}
+.loan-toggle-btn{flex:1;height:48px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.25s ease;display:flex;align-items:center;justify-content:center;}
+.loan-toggle-btn.btn-loan{background:rgba(239,68,68,0.15);border:1.5px solid rgba(239,68,68,0.4);color:#ef4444;}
+.loan-toggle-btn.btn-loan.active{background:#ef4444;border-color:#ef4444;color:#ffffff;box-shadow:0 0 16px rgba(239,68,68,0.5);}
+.loan-toggle-btn.btn-repay{background:rgba(0,188,212,0.15);border:1.5px solid rgba(0,188,212,0.4);color:#00bcd4;}
+.loan-toggle-btn.btn-repay.active{background:#00bcd4;border-color:#00bcd4;color:#000000;box-shadow:0 0 16px rgba(0,188,212,0.5);}
+.loan-input-card{width:100%;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:18px;padding:16px 14px;display:flex;flex-direction:column;gap:8px;}
+.loan-input-lbl{color:#a1a1aa;font-size:13.5px;font-weight:600;}
+.loan-field-box{display:flex;align-items:center;gap:6px;width:100%;background:#14151b;border:1.2px solid #27272e;border-radius:12px;padding:8px 14px;}
+.loan-currency-symbol{color:#ef4444;font-size:22px;font-weight:800;}
+.loan-amount-input{width:100%;background:none;border:none;outline:none;color:#ffffff;font-size:20px;font-weight:700;font-family:inherit;}
+.loan-date-card{width:100%;background:#0e0f14;border:1.3px solid #27272e;border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all 0.2s ease;}
+.loan-date-card:active{background:#16171e;border-color:#ef4444;}
+.loan-date-left{display:flex;align-items:center;gap:12px;}
+.loan-date-icon{width:22px;height:22px;color:#ef4444;flex-shrink:0;}
+.loan-date-info{display:flex;flex-direction:column;gap:2px;}
+.loan-date-sub{font-size:12px;color:#71717a;font-weight:500;}
+.loan-date-val{font-size:14.5px;color:#ffffff;font-weight:600;}
+.loan-submit-btn{width:100%;height:50px;background:#ef4444;border:none;border-radius:14px;color:#ffffff;font-size:15.5px;font-weight:700;cursor:pointer;transition:all 0.2s ease;margin-top:6px;box-shadow:0 4px 15px rgba(239,68,68,0.3);}
+.loan-submit-btn:active{transform:scale(0.98);opacity:0.9;}
+.repay-info-card{width:100%;background:#0e0f14;border:1.3px solid #27272e;border-radius:18px;padding:18px 16px;}
+
+/* Modal ប្រតិទិនខ្មែរ (Khmer Calendar Styling) */
+.calendar-modal{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s ease;padding:20px;}
+.calendar-modal.active{opacity:1;pointer-events:auto;}
+.calendar-card{background:#0e0f14;border:1.4px solid #27272e;border-radius:22px;padding:22px 18px 18px 18px;width:100%;max-width:330px;box-shadow:0 12px 40px rgba(0,0,0,0.9);display:flex;flex-direction:column;position:relative;transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);}
+.calendar-modal.active .calendar-card{transform:scale(1);}
+.calendar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-month-year{font-size:16px;font-weight:700;color:#ffffff;}
+.cal-nav-btn{background:#16171e;border:1px solid #27272e;color:#ffffff;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:12.5px;font-weight:600;color:#71717a;margin-bottom:8px;}
+.cal-days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;}
+.cal-day-cell{height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13.5px;font-weight:600;color:#ffffff;cursor:pointer;transition:all 0.15s ease;}
+.cal-day-cell:hover{background:#1f202a;}
+.cal-day-cell.selected{background:#ef4444;color:#ffffff;box-shadow:0 0 10px rgba(239,68,68,0.5);}
+.cal-day-cell.disabled{color:#3f3f46;pointer-events:none;}
+.cal-close-btn{width:100%;height:42px;background:#181820;border:1.2px solid #27272e;border-radius:12px;color:#d1d1d6;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px;}
+
 .deposit-main-card{width:100%;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:20px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 25px rgba(0,0,0,0.6);margin-bottom:16px;}
 .dep-header-title-center{color:#a1a1aa;font-size:14px;font-weight:500;text-align:center;width:100%;margin-bottom:8px;}
 .dep-amount-input-box-center{display:flex;align-items:center;justify-content:center;width:100%;margin:0 auto 14px auto;gap:3px;}
@@ -146,50 +187,6 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .khqr-sheet-submit-btn{width:100%;height:46px;background-color:#00bcd4;border:none;border-radius:12px;color:#000000;font-size:14.5px;font-weight:700;cursor:pointer;transition:all 0.2s ease;}
 .khqr-sheet-submit-btn:active{transform:scale(0.98);}
 .khqr-sheet-submit-btn.disabled{opacity:0.3;pointer-events:none;filter:grayscale(1);}
-
-.loan-tab-buttons{display:flex;gap:12px;width:100%;margin-bottom:18px;}
-.loan-tab-btn{flex:1;height:46px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s ease;border:none;}
-.loan-tab-btn.tab-borrow{background-color:rgba(239,68,68,0.15);border:1.3px solid #ef4444;color:#ef4444;}
-.loan-tab-btn.tab-borrow.active{background-color:#ef4444;color:#ffffff;box-shadow:0 0 15px rgba(239,68,68,0.5);}
-.loan-tab-btn.tab-repay{background-color:rgba(0,188,212,0.15);border:1.3px solid #00bcd4;color:#00bcd4;}
-.loan-tab-btn.tab-repay.active{background-color:#00bcd4;color:#000000;box-shadow:0 0 15px rgba(0,188,212,0.5);}
-
-.loan-content-section{display:none;width:100%;flex-direction:column;gap:14px;}
-.loan-content-section.active{display:flex;}
-
-.loan-amount-input-card{width:100%;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:18px;padding:18px 16px;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
-.loan-input-title{color:#a1a1aa;font-size:13.5px;font-weight:500;margin-bottom:8px;text-align:center;}
-.loan-input-wrapper{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;}
-.loan-currency-symbol{color:#00bcd4;font-size:24px;font-weight:700;}
-.loan-input-wrapper input{width:160px;background:none;border:none;outline:none;color:#ffffff;font-size:26px;font-weight:700;text-align:center;font-family:inherit;}
-.loan-input-wrapper input::placeholder{color:#3f3f46;}
-
-.loan-date-group{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;}
-.loan-date-box{width:100%;height:52px;background-color:#0e0f14;border:1.2px solid #27272e;border-radius:14px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all 0.2s ease;}
-.loan-date-box:active{background-color:#16171d;border-color:#71717a;}
-.loan-date-left{display:flex;align-items:center;gap:12px;font-size:13.8px;font-weight:600;color:#ffffff;}
-.loan-date-left svg{width:18px;height:18px;}
-.date-arrow-separator{display:flex;align-items:center;justify-content:center;height:24px;}
-
-.loan-confirm-btn{width:100%;height:50px;background-color:#00bcd4;border:none;border-radius:14px;color:#000000;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;transition:all 0.2s ease;}
-.loan-confirm-btn:active{transform:scale(0.98);}
-.loan-confirm-btn.disabled{opacity:0.3;pointer-events:none;filter:grayscale(1);}
-
-.calendar-modal{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s ease;padding:20px;}
-.calendar-modal.active{opacity:1;pointer-events:auto;}
-.calendar-card{background:#0e0f14;border:1.4px solid #27272e;border-radius:22px;padding:20px 16px;width:100%;max-width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.9);display:flex;flex-direction:column;position:relative;}
-.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.cal-month-title{font-size:16px;font-weight:700;color:#ffffff;}
-.cal-nav-btn{background:#181820;border:1px solid #3f3f46;color:#ffffff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;}
-.cal-nav-btn svg{width:16px;height:16px;}
-.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;font-weight:600;color:#71717a;margin-bottom:8px;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
-.cal-day-cell{height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:13.5px;font-weight:600;color:#ffffff;cursor:pointer;transition:all 0.15s ease;}
-.cal-day-cell:hover{background:#1a1b24;}
-.cal-day-cell.selected{background:#00bcd4;color:#000000;font-weight:700;}
-.cal-day-cell.empty{pointer-events:none;opacity:0;}
-.cal-close-btn{width:100%;height:40px;background-color:#1c1d24;border:1.2px solid #3f3f46;border-radius:12px;color:#ffffff;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:14px;}
-
 .bank-modal{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999999;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:all 0.3s ease;}
 .bank-modal.active{opacity:1;pointer-events:auto;}
 .bank-sheet{background:#0e0f14;border:1.2px solid #27272e;border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;padding:20px 16px 30px 16px;transform:translateY(100%);transition:transform 0.3s ease;display:flex;flex-direction:column;}
