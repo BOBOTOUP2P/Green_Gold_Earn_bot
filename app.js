@@ -51,6 +51,7 @@ function getFormattedDateTime(d = new Date()) {
   return `${day}/${mon}/${yr} ${hr}:${min}`;
 }
 
+// មុខងារបម្លែងចំនួនទឹកប្រាក់ទៅជាសញ្ញាផ្កាយការពារឯកជនភាព (* សម្រាប់លេខ១ខ្ទង់)
 window.getMaskedRank = function(balance) {
   var intVal = Math.floor(Math.abs(Number(balance) || 0));
   var len = intVal.toString().length;
@@ -593,8 +594,8 @@ async function syncUserToDatabase() {
       const data = snapshot.val();
       currentUser.totalDeposits = data.totalDeposits !== undefined ? Number(data.totalDeposits) : 0;
       currentUser.baseBalance = data.baseBalance !== undefined ? Number(data.baseBalance) : 0.00;
-      currentUser.balance = data.balance !== undefined ? Number(data.balance) : currentUser.baseBalance;
       currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
+      currentUser.balance = currentUser.baseBalance + currentUser.totalInterestVal;
       currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : currentUser.balance;
       currentUser.transactions = data.transactions || {};
       currentUser.interests = data.interests || {};
@@ -656,6 +657,7 @@ onValue(allUsersRef, (snapshot) => {
   if (!usersList.some(u => u.uid === currentUser.uid)) {
     usersList.push(currentUser);
   }
+  // តម្រៀបតាមសមតុល្យគណនីជាក់ស្ដែង ពីខ្ពស់មកទាប
   usersList.sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0));
   let html = '';
   usersList.forEach((user, index) => {
@@ -819,7 +821,6 @@ const pageAssets = document.getElementById('pageAssets');
 const pageDeposit = document.getElementById('pageDeposit');
 const pageHistory = document.getElementById('pageHistory');
 const pageInterest = document.getElementById('pageInterest');
-const pageLoan = document.getElementById('pageLoan');
 const switchDock = document.getElementById('switchDock');
 
 window.openDepositPage = function() {
@@ -835,124 +836,6 @@ window.closeDepositPage = function() {
   pageDeposit.classList.remove('active');
   pageAssets.classList.add('active');
   switchDock.style.display = 'flex';
-};
-
-/* មុខងារគ្រប់គ្រងទំព័រ កម្ចី / សង */
-window.openLoanPage = function() {
-  pageAssets.classList.remove('active');
-  pageLoan.classList.add('active');
-  switchDock.style.display = 'none';
-  switchLoanSubTab('borrow');
-};
-
-window.closeLoanPage = function() {
-  pageLoan.classList.remove('active');
-  pageAssets.classList.add('active');
-  switchDock.style.display = 'flex';
-};
-
-window.switchLoanSubTab = function(tab) {
-  const btnBorrow = document.getElementById('btnTabBorrow');
-  const btnRepay = document.getElementById('btnTabRepay');
-  const borrowContent = document.getElementById('subTabBorrowContent');
-  const repayContent = document.getElementById('subTabRepayContent');
-
-  if (tab === 'borrow') {
-    btnBorrow.classList.add('active');
-    btnRepay.classList.remove('active');
-    borrowContent.style.display = 'flex';
-    repayContent.style.display = 'none';
-  } else {
-    btnRepay.classList.add('active');
-    btnBorrow.classList.remove('active');
-    repayContent.style.display = 'flex';
-    borrowContent.style.display = 'none';
-  }
-};
-
-/* ប្រតិទិនខ្មែរ (Khmer Calendar Logic) */
-const KHMER_MONTHS = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
-let currentCalDate = new Date();
-let activeCalendarTarget = null;
-let selectedBorrowDateStr = "";
-let selectedRepayDateStr = "";
-
-window.openKhmerCalendar = function(target) {
-  activeCalendarTarget = target;
-  currentCalDate = new Date();
-  renderKhmerCalendarGrid();
-  document.getElementById('khmerCalendarModal').classList.add('active');
-};
-
-window.closeKhmerCalendar = function() {
-  document.getElementById('khmerCalendarModal').classList.remove('active');
-};
-
-window.changeCalMonth = function(offset) {
-  currentCalDate.setMonth(currentCalDate.getMonth() + offset);
-  renderKhmerCalendarGrid();
-};
-
-function renderKhmerCalendarGrid() {
-  const monthYearEl = document.getElementById('calMonthYear');
-  const gridEl = document.getElementById('calDaysGrid');
-  const year = currentCalDate.getFullYear();
-  const month = currentCalDate.getMonth();
-
-  monthYearEl.innerText = `ខែ${KHMER_MONTHS[month]} ឆ្នាំ${year}`;
-  gridEl.innerHTML = '';
-
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
-
-  for (let i = 0; i < firstDayIndex; i++) {
-    const blank = document.createElement('div');
-    blank.className = 'cal-day-cell disabled';
-    gridEl.appendChild(blank);
-  }
-
-  for (let day = 1; day <= totalDays; day++) {
-    const dayCell = document.createElement('div');
-    dayCell.className = 'cal-day-cell';
-    dayCell.innerText = day;
-    dayCell.onclick = function() {
-      selectKhmerCalendarDate(day, month, year);
-    };
-    gridEl.appendChild(dayCell);
-  }
-}
-
-function selectKhmerCalendarDate(day, month, year) {
-  const dStr = String(day).padStart(2, '0');
-  const mStr = String(month + 1).padStart(2, '0');
-  const fullDate = `${dStr}/${mStr}/${year}`;
-
-  if (activeCalendarTarget === 'borrow') {
-    selectedBorrowDateStr = fullDate;
-    document.getElementById('dispBorrowDate').innerText = `${dStr} ${KHMER_MONTHS[month]} ${year}`;
-  } else if (activeCalendarTarget === 'repay') {
-    selectedRepayDateStr = fullDate;
-    document.getElementById('dispRepayDate').innerText = `${dStr} ${KHMER_MONTHS[month]} ${year}`;
-  }
-  closeKhmerCalendar();
-}
-
-window.submitLoanRequest = function() {
-  const amt = parseFloat(document.getElementById('inputBorrowAmount').value);
-  if (!amt || amt <= 0) {
-    alert("សូមវាយបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវកម្ចីឱ្យបានត្រឹមត្រូវ!");
-    return;
-  }
-  if (!selectedBorrowDateStr || !selectedRepayDateStr) {
-    alert("សូមជ្រើសរើសថ្ងៃខ្ចី និងថ្ងៃសងប្រាក់ឱ្យបានពេញលេញ!");
-    return;
-  }
-  alert(`សំណើកម្ចីប្រាក់ចំនួន $${amt.toFixed(2)} ត្រូវបានបញ្ជាក់ទទួលជោគជ័យ!`);
-  closeLoanPage();
-};
-
-window.submitRepayRequest = function() {
-  alert("មុខងារសងប្រាក់ត្រូវបានបញ្ជាក់!");
 };
 
 window.selectPigAmount = function(amount, el) {
@@ -1130,7 +1013,6 @@ window.selectTab = function(tab) {
   pageHistory.classList.remove('active');
   pageDeposit.classList.remove('active');
   pageInterest.classList.remove('active');
-  pageLoan.classList.remove('active');
   switchDock.style.display = 'flex';
   
   if (tab === 'home') {
