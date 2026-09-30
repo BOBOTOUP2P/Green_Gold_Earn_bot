@@ -84,6 +84,21 @@
   </div>
 </div>
 
+<div id="calendarModal" class="calendar-modal" onclick="closeCalendarModal()">
+  <div class="calendar-card" onclick="event.stopPropagation()">
+    <div class="cal-header">
+      <button class="cal-nav-btn" onclick="prevCalMonth()"><i data-lucide="chevron-left"></i></button>
+      <div class="cal-month-title" id="calMonthTitle">ខែ... ឆ្នាំ...</div>
+      <button class="cal-nav-btn" onclick="nextCalMonth()"><i data-lucide="chevron-right"></i></button>
+    </div>
+    <div class="cal-days-header">
+      <span>អា</span><span>ច</span><span>អ</span><span>ពុ</span><span>ព្រ</span><span>សុ</span><span>ស</span>
+    </div>
+    <div class="cal-grid" id="calDaysGrid"></div>
+    <button class="cal-close-btn" onclick="closeCalendarModal()">បិទ</button>
+  </div>
+</div>
+
 <div id="transDetailModal" class="detail-modal" onclick="closeTransDetailModal()">
   <div class="detail-card" onclick="event.stopPropagation()">
     <div class="detail-header-title">ព័ត៌មានលម្អិតប្រតិបត្តិការ</div>
@@ -177,6 +192,10 @@
                   <span class="wallet-val" id="balanceVal">0.00</span>
                   <span class="wallet-cur">USD</span>
                 </div>
+                <div class="wallet-loan-tag" onclick="event.stopPropagation(); openLoanPage();">
+                  <i data-lucide="hand-coins"></i>
+                  <span>កម្ចី / សង</span>
+                </div>
                 <div class="wallet-deposit-tag" onclick="event.stopPropagation(); openDepositPage();">
                   <i data-lucide="arrow-down"></i>
                   <span>ដាក់ប្រាក់</span>
@@ -256,6 +275,59 @@
         <div class="row-left"><i data-lucide="dollar-sign"></i><span>ទឹកប្រាក់អតិបរមា សរុបUSD:</span></div>
         <div class="row-right txt-cyan"><span id="maxDepositText">0.00 USD</span></div>
       </div>
+    </div>
+  </div>
+
+  <div class="page-view" id="pageLoan">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="closeLoanPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">កម្ចី / សងប្រាក់</div>
+      <div style="width: 38px;"></div>
+    </div>
+    <div class="loan-tab-buttons">
+      <button class="loan-tab-btn tab-borrow active" id="btnTabBorrow" onclick="switchLoanTab('borrow')">កម្ចី</button>
+      <button class="loan-tab-btn tab-repay" id="btnTabRepay" onclick="switchLoanTab('repay')">សង</button>
+    </div>
+    
+    <div id="borrowContentSection" class="loan-content-section active">
+      <div class="loan-amount-input-card">
+        <div class="loan-input-title">បញ្ចូលចំនួនទឹកប្រាក់ខ្ចី (USD)</div>
+        <div class="loan-input-wrapper">
+          <span class="loan-currency-symbol">$</span>
+          <input type="number" id="borrowAmountInput" placeholder="0.00" oninput="checkBorrowValidation()">
+        </div>
+      </div>
+      <div class="loan-date-group">
+        <div class="loan-date-box" onclick="openDatePicker('borrow')">
+          <div class="loan-date-left">
+            <i data-lucide="calendar" style="color:#ef4444;"></i>
+            <span id="borrowDateLabel">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់</span>
+          </div>
+          <i data-lucide="chevron-down" style="color:#71717a;"></i>
+        </div>
+        <div class="date-arrow-separator">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+        </div>
+        <div class="loan-date-box" onclick="openDatePicker('repay')">
+          <div class="loan-date-left">
+            <i data-lucide="calendar" style="color:#00bcd4;"></i>
+            <span id="repayDateLabel">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</span>
+          </div>
+          <i data-lucide="chevron-down" style="color:#71717a;"></i>
+        </div>
+      </div>
+      <button class="loan-confirm-btn disabled" id="btnConfirmBorrow" onclick="submitBorrowRequest()">បញ្ជាក់សារឡើងវិញ</button>
+    </div>
+
+    <div id="repayContentSection" class="loan-content-section">
+      <div class="loan-amount-input-card">
+        <div class="loan-input-title">បញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសង (USD)</div>
+        <div class="loan-input-wrapper">
+          <span class="loan-currency-symbol">$</span>
+          <input type="number" id="repayAmountInput" placeholder="0.00" oninput="checkRepayValidation()">
+        </div>
+      </div>
+      <button class="loan-confirm-btn disabled" id="btnConfirmRepay" onclick="submitRepayRequest()">បញ្ជាក់ការសងប្រាក់</button>
     </div>
   </div>
 
