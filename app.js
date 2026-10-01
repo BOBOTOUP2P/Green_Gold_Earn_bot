@@ -75,6 +75,20 @@ function getFormattedDateTime(d = new Date()) {
   return `${day}/${mon}/${yr} ${hr}:${min}`;
 }
 
+const KHMER_NUMS = ['០','១','២','៣','៤','៥','៦','៧','៨','៩'];
+const KHMER_MONTHS = ['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+
+function toKhmerNumber(num) {
+  return num.toString().split('').map(c => KHMER_NUMS[c] || c).join('');
+}
+
+function formatKhmerDateFull(dateObj) {
+  const day = dateObj.getDate();
+  const month = dateObj.getMonth();
+  const year = dateObj.getFullYear();
+  return `ថ្ងៃទី ${toKhmerNumber(String(day).padStart(2, '0'))} ខែ ${KHMER_MONTHS[month]} ឆ្នាំ ${toKhmerNumber(year)}`;
+}
+
 window.getMaskedRank = function(balance) {
   var intVal = Math.floor(Math.abs(Number(balance) || 0));
   var len = intVal.toString().length;
@@ -392,7 +406,6 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
-// ស្ដាប់ទិន្នន័យពី Firebase Realtime ១០០% និងចាប់ផ្ដើមបង្ហាញផ្ទាំងទទួលបានជោគជ័យ
 async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid);
@@ -420,12 +433,10 @@ async function syncUserToDatabase() {
       syncUserToSheetUI();
     }
     
-    // Realtime Listener
     onValue(userRef, (snap) => {
       if (snap.exists()) {
         const d = snap.val();
         
-        // ពិនិត្យរកមើលប្រតិបត្តិការ Done ថ្មីៗ ដើម្បីបង្ហាញផ្ទាំងជោគជ័យភ្លាមៗ
         if (d.transactions) {
           Object.values(d.transactions).forEach(txn => {
             const st = (txn.status || '').toLowerCase();
@@ -467,6 +478,9 @@ function updateUIFromData(data) {
   
   const maxEl = document.getElementById('maxDepositText');
   if (maxEl) maxEl.innerText = (currentUser.maxPeak || 0.00).toFixed(2) + " USD";
+
+  const loanBalText = document.getElementById('loanUserBalanceText');
+  if (loanBalText) loanBalText.innerText = currentUser.balance.toFixed(2) + " USD";
 
   setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), currentUser.totalRateSummary);
 
@@ -660,20 +674,111 @@ const pageDeposit = document.getElementById('pageDeposit');
 const pageHistory = document.getElementById('pageHistory');
 const pageInterest = document.getElementById('pageInterest');
 const pageLoan = document.getElementById('pageLoan');
+const pageGuarantor = document.getElementById('pageGuarantor');
 const switchDock = document.getElementById('switchDock');
+
+let guarantorImages = [null, null, null, null];
+let calCurrentDate = new Date();
+let selectedKhmerRepayDate = null;
+
+// ពិនិត្យលក្ខខណ្ឌបើកប៊ូតុង «បន្ត» ឱ្យភ្លឺពណ៌ក្រហម
+function checkLoanStep1Validation() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  const btnNext = document.getElementById('btnLoanStep1Next');
+  if (amt > 0 && selectedKhmerRepayDate) {
+    btnNext.classList.remove('disabled');
+  } else {
+    btnNext.classList.add('disabled');
+  }
+}
+
+window.handleLoanAmountInput = function(input) {
+  input.value = input.value.replace(/[^0-9.]/g, '');
+  const parts = input.value.split('.');
+  if (parts.length > 2) {
+    input.value = parts[0] + '.' + parts.slice(1).join('');
+  }
+  const val = parseFloat(input.value) || 0;
+  const received = val > 0 ? (val * 0.99) : 0;
+  document.getElementById('loanReceivedAmount').innerText = received.toFixed(2) + " USD";
+  checkLoanStep1Validation();
+};
+
+window.openKhmerCalendar = function() {
+  calCurrentDate = new Date();
+  renderKhmerCalendarGrid();
+  document.getElementById('khmerCalendarModal').classList.add('active');
+};
+
+window.closeKhmerCalendar = function() {
+  document.getElementById('khmerCalendarModal').classList.remove('active');
+};
+
+window.changeKhmerMonth = function(offset) {
+  calCurrentDate.setMonth(calCurrentDate.getMonth() + offset);
+  renderKhmerCalendarGrid();
+};
+
+function renderKhmerCalendarGrid() {
+  const year = calCurrentDate.getFullYear();
+  const month = calCurrentDate.getMonth();
+  
+  document.getElementById('khmerCalMonthYear').innerText = `${KHMER_MONTHS[month]} ${toKhmerNumber(year)}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const grid = document.getElementById('khmerCalDaysGrid');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < firstDayIndex; i++) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'khmer-cal-day empty';
+    grid.appendChild(emptyDiv);
+  }
+
+  for (let d = 1; d <= lastDay; d++) {
+    const dayBtn = document.createElement('div');
+    dayBtn.className = 'khmer-cal-day';
+    dayBtn.innerText = toKhmerNumber(d);
+    dayBtn.onclick = () => {
+      selectedKhmerRepayDate = new Date(year, month, d);
+      document.getElementById('repayDueDateKhmerText').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
+      closeKhmerCalendar();
+      checkLoanStep1Validation();
+    };
+    grid.appendChild(dayBtn);
+  }
+  lucide.createIcons();
+}
 
 window.openLoanPage = function() {
   pageAssets.classList.remove('active');
   pageLoan.classList.add('active');
+  if (pageGuarantor) pageGuarantor.classList.remove('active');
   switchDock.style.display = 'none';
   switchLoanTab('borrow');
-  var today = new Date().toISOString().split('T')[0];
-  document.getElementById('borrowDateInput').value = today;
-  document.getElementById('repayActualDateInput').value = today;
+
+  const today = new Date();
+  const khmerToday = formatKhmerDateFull(today);
+  
+  const bAuto = document.getElementById('borrowAutoDateKhmer');
+  const rAuto = document.getElementById('repayAutoDateKhmer');
+  if (bAuto) bAuto.innerText = khmerToday;
+  if (rAuto) rAuto.innerText = khmerToday;
+
+  const balText = document.getElementById('loanUserBalanceText');
+  if (balText) balText.innerText = currentUser.balance.toFixed(2) + " USD";
+  
+  document.getElementById('borrowAmountInput').value = '';
+  document.getElementById('loanReceivedAmount').innerText = '0.00 USD';
+  document.getElementById('repayDueDateKhmerText').innerText = 'ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ...';
+  selectedKhmerRepayDate = null;
+  checkLoanStep1Validation();
 };
 
 window.closeLoanPage = function() {
   pageLoan.classList.remove('active');
+  if (pageGuarantor) pageGuarantor.classList.remove('active');
   pageAssets.classList.add('active');
   switchDock.style.display = 'flex';
 };
@@ -685,49 +790,68 @@ window.switchLoanTab = function(type) {
   var secRepay = document.getElementById('loanRepaySection');
 
   if (type === 'borrow') {
-    tabBorrow.className = 'loan-tab-btn active-borrow';
-    tabRepay.className = 'loan-tab-btn';
+    tabBorrow.className = 'loan-capsule-btn active-borrow';
+    tabRepay.className = 'loan-capsule-btn';
     secBorrow.classList.add('active');
     secRepay.classList.remove('active');
   } else {
-    tabBorrow.className = 'loan-tab-btn';
-    tabRepay.className = 'loan-tab-btn active-repay';
+    tabBorrow.className = 'loan-capsule-btn';
+    tabRepay.className = 'loan-capsule-btn active-repay';
     secBorrow.classList.remove('active');
     secRepay.classList.add('active');
   }
 };
 
-window.confirmLoanRequest = function() {
-  var amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
-  var bDate = document.getElementById('borrowDateInput').value;
-  var rDate = document.getElementById('repayDueDateInput').value;
+// ពេលចុច «បន្ត» ➔ ចូលទៅកាន់ទំព័រ «ព័ត៌មានអ្នកធានា»
+window.goToLoanGuarantorPage = function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  if (amt <= 0 || !selectedKhmerRepayDate) return;
 
-  if (amt <= 0) {
-    alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី!");
-    return;
-  }
-  if (!bDate || !rDate) {
-    alert("សូមជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ឱ្យបានត្រឹមត្រូវ!");
-    return;
-  }
+  const today = new Date();
+  const khmerToday = formatKhmerDateFull(today);
 
-  alert("សំណើកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានផ្ញើជូន Admin រួចរាល់!");
+  document.getElementById('guarantorBorrowAmtText').innerText = amt.toFixed(2) + " USD";
+  document.getElementById('guarantorBorrowDateText').innerText = khmerToday;
+  document.getElementById('guarantorRepayDateText').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
+  document.getElementById('guarantorBigAmount').innerText = "$" + amt.toFixed(2);
+
+  pageLoan.classList.remove('active');
+  pageGuarantor.classList.add('active');
+  lucide.createIcons();
+};
+
+window.backToLoanStep1 = function() {
+  pageGuarantor.classList.remove('active');
+  pageLoan.classList.add('active');
+};
+
+window.triggerGuarantorUpload = function(index) {
+  document.getElementById(`guarantorFile${index}`).click();
+};
+
+window.handleGuarantorImg = function(input, index) {
+  if (input.files && input.files[0]) {
+    guarantorImages[index] = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById(`guarPreview${index}`).innerHTML = `<img src="${e.target.result}" alt="Guarantor">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+};
+
+window.submitFinalLoanWithGuarantor = function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  alert("សំណើកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " រួមជាមួយឯកសារអ្នកធានា ត្រូវបានផ្ញើជូន Admin រួចរាល់!");
   closeLoanPage();
 };
 
 window.confirmRepayRequest = function() {
   var amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
-  var actualDate = document.getElementById('repayActualDateInput').value;
-
   if (amt <= 0) {
     alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសង!");
     return;
   }
-  if (!actualDate) {
-    alert("សូមជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់!");
-    return;
-  }
-
   alert("ការសងប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានបញ្ជាក់រួចរាល់!");
   closeLoanPage();
 };
@@ -921,6 +1045,7 @@ window.selectTab = function(tab) {
   pageDeposit.classList.remove('active');
   pageInterest.classList.remove('active');
   pageLoan.classList.remove('active');
+  if (pageGuarantor) pageGuarantor.classList.remove('active');
   switchDock.style.display = 'flex';
   
   if (tab === 'home') {
