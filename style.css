@@ -115,28 +115,82 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .telegram-badge:active{background-color:#1f1f26;border-color:#a1a1aa;}
 .txt-cyan{color:#00bcd4;font-weight:600;}
 
-/* កម្ចី និង សងប្រាក់ UI */
-.loan-tabs-wrapper{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;margin-bottom:20px;}
-.loan-tab-btn{flex:1;height:46px;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.25s ease;border:1.4px solid transparent;background:#14151b;color:#a1a1aa;}
-.loan-tab-btn.active-borrow{background:rgba(239,68,68,0.18);border-color:#ef4444;color:#ef4444;box-shadow:0 0 16px rgba(239,68,68,0.3);}
-.loan-tab-btn.active-repay{background:rgba(0,188,212,0.18);border-color:#00bcd4;color:#00bcd4;box-shadow:0 0 16px rgba(0,188,212,0.3);}
+/* កម្ចី និង សងប្រាក់ UI តាមទម្រង់រូបភាពថ្មី ១០០% */
+.loan-tab-capsule{display:flex;align-items:center;background:#101114;border:1px solid #23242a;border-radius:24px;padding:4px;width:100%;margin-bottom:20px;}
+.loan-capsule-btn{flex:1;height:44px;border:none;border-radius:20px;font-size:15px;font-weight:700;color:#71717a;background:transparent;cursor:pointer;transition:all 0.25s ease;}
+.loan-capsule-btn.active-borrow{background:#ef4444;color:#ffffff;box-shadow:0 4px 15px rgba(239,68,68,0.4);}
+.loan-capsule-btn.active-repay{background:#00bcd4;color:#000000;box-shadow:0 4px 15px rgba(0,188,212,0.4);}
 .loan-section{display:none;width:100%;flex-direction:column;gap:14px;}
 .loan-section.active{display:flex;}
-.loan-input-card{width:100%;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:18px;padding:18px 16px;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,0.6);}
-.loan-input-title{color:#a1a1aa;font-size:14px;font-weight:500;margin-bottom:12px;text-align:center;}
-.loan-input-box{display:flex;align-items:center;justify-content:center;width:100%;gap:4px;}
-.loan-currency-symbol{color:#ef4444;font-size:26px;font-weight:800;line-height:1;}
-.loan-input-box input{background:none;border:none;outline:none;color:#ffffff;font-size:28px;font-weight:800;text-align:left;width:160px;font-family:inherit;}
-.loan-date-group{display:flex;flex-direction:column;gap:12px;width:100%;}
-.loan-date-item{display:flex;flex-direction:column;gap:6px;}
-.loan-date-item label{font-size:13.5px;color:#d1d1d6;font-weight:500;}
-.loan-date-picker-box{position:relative;width:100%;height:50px;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:14px;display:flex;align-items:center;padding:0 14px;overflow:hidden;}
-.loan-date-picker-box input[type="date"]{width:100%;height:100%;background:none;border:none;outline:none;color:#ffffff;font-size:14.5px;font-family:inherit;cursor:pointer;position:relative;z-index:2;}
-.loan-date-picker-box input[type="date"]::-webkit-calendar-picker-indicator{opacity:0;cursor:pointer;position:absolute;width:100%;height:100%;left:0;top:0;}
-.loan-arrow-down-svg{position:absolute;right:14px;width:20px;height:20px;color:#71717a;pointer-events:none;z-index:1;}
-.loan-confirm-btn{width:100%;height:50px;background-color:#ef4444;border:none;border-radius:14px;color:#ffffff;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px;box-shadow:0 4px 18px rgba(239,68,68,0.3);transition:all 0.2s ease;}
-.loan-confirm-btn.repay-mode{background-color:#00bcd4;color:#000000;box-shadow:0 4px 18px rgba(0,188,212,0.3);}
-.loan-confirm-btn:active{transform:scale(0.98);}
+
+.pro-card{width:100%;background:#0d0e12;border:1.2px solid #22232a;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,0.5);}
+.pro-card-header{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:10px;}
+.pro-card-title{font-size:13.5px;color:#d1d1d6;font-weight:600;}
+.pro-card-title-sub{font-size:13px;color:#8e8e96;font-weight:500;margin-bottom:8px;}
+.pro-balance-tag{font-size:12.5px;color:#00bcd4;font-weight:700;}
+
+.pro-input-row{display:flex;align-items:center;justify-content:flex-end;gap:6px;width:100%;padding:4px 30px 10px 0;}
+.pro-input-sym{color:#ef4444;font-size:26px;font-weight:800;line-height:1;}
+.pro-input-row input{background:none;border:none;outline:none;color:#ffffff;font-size:28px;font-weight:800;text-align:left;width:150px;font-family:inherit;}
+
+.pro-card-footer{display:flex;align-items:center;justify-content:space-between;width:100%;padding-top:10px;border-top:1px solid #1a1b22;font-size:12.5px;font-weight:600;}
+.pro-fee-text{color:#eab308;}
+.pro-received-text{color:#22c55e;}
+.pro-received-text span{font-weight:700;}
+
+.pro-card-red-tint{background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.35);}
+.pro-card-cyan-tint{background:rgba(0,188,212,0.06);border-color:rgba(0,188,212,0.35);cursor:pointer;}
+
+.pro-auto-date-locked{width:100%;height:44px;background:#14151b;border:1.2px solid #282932;border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;color:#ffffff;font-size:14px;font-weight:600;}
+.pro-lock-svg{width:18px;height:18px;flex-shrink:0;}
+
+.pro-arrow-down-divider{display:flex;align-items:center;justify-content:center;width:100%;margin:-4px 0 -4px 0;}
+.pro-arrow-down-divider svg{width:22px;height:22px;}
+
+.pro-select-date-wrapper{width:100%;height:44px;background:#14151b;border:1.2px solid #282932;border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;cursor:pointer;}
+.pro-selected-date-text{color:#ffffff;font-size:14px;font-weight:600;}
+.pro-arrow-svg{width:18px;height:18px;color:#00bcd4;pointer-events:none;}
+
+/* ប៊ូតុង បន្ត និង បញ្ជាក់ */
+.pro-submit-btn{width:100%;height:50px;background:#ef4444;border:none;border-radius:14px;color:#ffffff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 18px rgba(239,68,68,0.35);transition:all 0.25s ease;}
+.pro-submit-btn:active{transform:scale(0.98);}
+.pro-submit-btn.disabled{background:#1f2128;color:#52525b;box-shadow:none;border:1.2px solid #2d3039;pointer-events:none;}
+.pro-submit-btn.repay-mode{background:#00bcd4;color:#000000;box-shadow:0 4px 18px rgba(0,188,212,0.35);}
+.pro-btn-red{background:#ef4444 !important;color:#ffffff !important;box-shadow:0 4px 18px rgba(239,68,68,0.35) !important;}
+
+/* ទំព័រ ព័ត៌មានអ្នកធានា (Guarantor Page) */
+.pro-info-line{font-size:13.5px;color:#d1d1d6;font-weight:600;margin-bottom:6px;}
+.pro-info-line span{color:#00bcd4;font-weight:700;}
+
+.pro-big-amount-display{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;margin:14px 0 16px 0;}
+.pro-big-title{font-size:14.5px;color:#a1a1aa;font-weight:600;margin-bottom:4px;}
+.pro-big-val{font-size:32px;font-weight:800;color:#ef4444;letter-spacing:0.5px;}
+
+.pro-boxes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;margin-bottom:14px;}
+.pro-upload-square{width:100%;aspect-ratio:1/1;background:#101116;border:1.5px dashed #3f3f46;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s ease;overflow:hidden;position:relative;}
+.pro-upload-square:active{transform:scale(0.95);border-color:#00bcd4;}
+.pro-upload-preview{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:300;color:#71717a;}
+.pro-upload-preview img{width:100%;height:100%;object-fit:cover;}
+
+.pro-upload-instruction{font-size:12.5px;color:#94a3b8;line-height:1.5;text-align:center;margin-bottom:14px;padding:0 8px;}
+
+/* Khmer Calendar Modal UI */
+.khmer-cal-modal{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:999999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s ease;padding:20px;}
+.khmer-cal-modal.active{opacity:1;pointer-events:auto;}
+.khmer-cal-card{background:#0e0f14;border:1.3px solid #27272e;border-radius:24px;padding:22px 18px;width:100%;max-width:330px;box-shadow:0 10px 35px rgba(0,0,0,0.9);display:flex;flex-direction:column;transform:scale(0.92);transition:transform 0.25s ease;}
+.khmer-cal-modal.active .khmer-cal-card{transform:scale(1);}
+.khmer-cal-header{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:14px;}
+.khmer-cal-month-year{font-size:16px;font-weight:700;color:#00bcd4;}
+.khmer-cal-arrow{background:#181820;border:1px solid #3f3f46;color:#ffffff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.khmer-cal-arrow svg{width:16px;height:16px;}
+.khmer-cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:13px;font-weight:700;color:#a1a1aa;margin-bottom:10px;}
+.khmer-cal-days-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;width:100%;text-align:center;}
+.khmer-cal-day{height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#ffffff;cursor:pointer;transition:all 0.15s ease;}
+.khmer-cal-day:hover{background:#1f202a;color:#00bcd4;}
+.khmer-cal-day.empty{pointer-events:none;cursor:default;}
+.khmer-cal-day.selected{background:#00bcd4;color:#000000;font-weight:800;}
+.khmer-cal-actions{display:flex;justify-content:flex-end;margin-top:14px;padding-top:10px;border-top:1px solid #1f2026;}
+.khmer-cal-close-btn{background:none;border:none;color:#ef4444;font-size:14px;font-weight:700;cursor:pointer;padding:4px 8px;}
 
 .deposit-main-card{width:100%;background-color:#0e0f14;border:1.3px solid #27272e;border-radius:20px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 25px rgba(0,0,0,0.6);margin-bottom:16px;}
 .dep-header-title-center{color:#a1a1aa;font-size:14px;font-weight:500;text-align:center;width:100%;margin-bottom:8px;}
