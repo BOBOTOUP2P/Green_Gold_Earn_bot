@@ -112,6 +112,24 @@
   </div>
 </div>
 
+<!-- Modal ប្រតិទិនខ្មែរ -->
+<div id="khmerCalendarModal" class="khmer-cal-modal" onclick="closeKhmerCalendar()">
+  <div class="khmer-cal-card" onclick="event.stopPropagation()">
+    <div class="khmer-cal-header">
+      <button class="khmer-cal-arrow" onclick="changeKhmerMonth(-1)"><i data-lucide="chevron-left"></i></button>
+      <div class="khmer-cal-month-year" id="khmerCalMonthYear">មេសា ២០២៥</div>
+      <button class="khmer-cal-arrow" onclick="changeKhmerMonth(1)"><i data-lucide="chevron-right"></i></button>
+    </div>
+    <div class="khmer-cal-weekdays">
+      <span>អា</span><span>ច</span><span>អ</span><span>ពុ</span><span>ព្រ</span><span>សុ</span><span>ស</span>
+    </div>
+    <div class="khmer-cal-days-grid" id="khmerCalDaysGrid"></div>
+    <div class="khmer-cal-actions">
+      <button class="khmer-cal-close-btn" onclick="closeKhmerCalendar()">បោះបង់</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-container">
   
   <div class="page-view home-content active" id="pageHome">
@@ -178,13 +196,11 @@
                   <span class="wallet-cur">USD</span>
                 </div>
                 
-                <!-- ប៊ូតុង កម្ចី / សង នៅខាងឆ្វេងក្រោម -->
                 <div class="wallet-loan-tag" onclick="event.stopPropagation(); openLoanPage();">
                   <i data-lucide="repeat"></i>
                   <span>កម្ចី / សង</span>
                 </div>
 
-                <!-- ប៊ូតុង ដាក់ប្រាក់ នៅខាងស្ដាំក្រោម -->
                 <div class="wallet-deposit-tag" onclick="event.stopPropagation(); openDepositPage();">
                   <i data-lucide="arrow-down"></i>
                   <span>ដាក់ប្រាក់</span>
@@ -212,6 +228,8 @@
                   <rect x="175" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
                   <ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 80 135 C 105 118, 150 118, 175 128" class="highlight-line"/>
+                  <rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 166 107 C 170 88, 188 92, 182 110 Z" fill="#252530" opacity="0.6"/>
@@ -267,7 +285,7 @@
     </div>
   </div>
 
-  <!-- ទំព័រ កម្ចី / សង (Loan Page) -->
+  <!-- ទំព័រ កម្ចី / សងប្រាក់ -->
   <div class="page-view" id="pageLoan">
     <div class="history-topbar">
       <button class="history-back-btn" onclick="closeLoanPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
@@ -275,64 +293,133 @@
       <div style="width: 38px;"></div>
     </div>
 
-    <div class="loan-tabs-wrapper">
-      <button class="loan-tab-btn active-borrow" id="tabBorrow" onclick="switchLoanTab('borrow')">កម្ចី</button>
-      <button class="loan-tab-btn" id="tabRepay" onclick="switchLoanTab('repay')">សង</button>
+    <div class="loan-tab-capsule">
+      <button class="loan-capsule-btn active-borrow" id="tabBorrow" onclick="switchLoanTab('borrow')">កម្ចី</button>
+      <button class="loan-capsule-btn" id="tabRepay" onclick="switchLoanTab('repay')">សង</button>
     </div>
 
-    <!-- ផ្នែកកម្ចីប្រាក់ -->
+    <!-- ផ្នែកកម្ចីប្រាក់ (Borrow Section) -->
     <div id="loanBorrowSection" class="loan-section active">
-      <div class="loan-input-card">
-        <div class="loan-input-title">ចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី ($)</div>
-        <div class="loan-input-box">
-          <span class="loan-currency-symbol">$</span>
-          <input type="number" id="borrowAmountInput" placeholder="0.00" min="1" step="any">
+      <div class="pro-card">
+        <div class="pro-card-header">
+          <span class="pro-card-title">ចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី ($)</span>
+          <span class="pro-balance-tag">សមតុល្យគណនី: <span id="loanUserBalanceText">0.00 USD</span></span>
+        </div>
+        <div class="pro-input-row">
+          <span class="pro-input-sym">$</span>
+          <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="borrowAmountInput" placeholder="0.00" oninput="handleLoanAmountInput(this)">
+        </div>
+        <div class="pro-card-footer">
+          <span class="pro-fee-text">ថ្លៃសេវ៉ា: 1.00%</span>
+          <span class="pro-received-text">ទឹកប្រាក់ទទួលបាន: <span id="loanReceivedAmount">0.00 USD</span></span>
         </div>
       </div>
 
-      <div class="loan-date-group">
-        <div class="loan-date-item">
-          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់</label>
-          <div class="loan-date-picker-box">
-            <input type="date" id="borrowDateInput">
-            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-        </div>
-
-        <div class="loan-date-item">
-          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</label>
-          <div class="loan-date-picker-box">
-            <input type="date" id="repayDueDateInput">
-            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+      <div class="pro-card pro-card-red-tint">
+        <div class="pro-card-title-sub">ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន ខ្ចីប្រាក់</div>
+        <div class="pro-auto-date-locked">
+          <span id="borrowAutoDateKhmer">ថ្ងៃទី ០១ ខែ មេសា ឆ្នាំ ២០២៥</span>
+          <svg class="pro-lock-svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
         </div>
       </div>
 
-      <button class="loan-confirm-btn" onclick="confirmLoanRequest()">បញ្ជាក់សារឡើងវិញ</button>
+      <div class="pro-arrow-down-divider">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <polyline points="19 12 12 19 5 12"></polyline>
+        </svg>
+      </div>
+
+      <div class="pro-card pro-card-cyan-tint" onclick="openKhmerCalendar()">
+        <div class="pro-card-title-sub" style="color: #67e8f9;">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</div>
+        <div class="pro-select-date-wrapper">
+          <span class="pro-selected-date-text" id="repayDueDateKhmerText">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ...</span>
+          <svg class="pro-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+
+      <!-- ប៊ូតុង បន្ត (ស្រអាប់បើមិនទាន់គ្រប់លក្ខខណ្ឌ ភ្លឺក្រហមពេលគ្រប់លក្ខខណ្ឌ) -->
+      <button class="pro-submit-btn disabled" id="btnLoanStep1Next" onclick="goToLoanGuarantorPage()">បន្ត</button>
     </div>
 
-    <!-- ផ្នែកសងប្រាក់ -->
+    <!-- ផ្នែកសងប្រាក់ (Repay Section) -->
     <div id="loanRepaySection" class="loan-section">
-      <div class="loan-input-card">
-        <div class="loan-input-title">ចំនួនទឹកប្រាក់ដែលត្រូវសង ($)</div>
-        <div class="loan-input-box">
-          <span class="loan-currency-symbol" style="color: #00bcd4;">$</span>
-          <input type="number" id="repayAmountInput" placeholder="0.00" min="1" step="any">
+      <div class="pro-card">
+        <div class="pro-card-header">
+          <span class="pro-card-title">ចំនួនទឹកប្រាក់ដែលត្រូវសង ($)</span>
+        </div>
+        <div class="pro-input-row">
+          <span class="pro-input-sym" style="color: #00bcd4;">$</span>
+          <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="repayAmountInput" placeholder="0.00" oninput="this.value = this.value.replace(/[^0-9.]/g, '')">
         </div>
       </div>
 
-      <div class="loan-date-group">
-        <div class="loan-date-item">
-          <label>ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់ជាក់ស្ដែង</label>
-          <div class="loan-date-picker-box">
-            <input type="date" id="repayActualDateInput">
-            <svg class="loan-arrow-down-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+      <div class="pro-card pro-card-cyan-tint">
+        <div class="pro-card-title-sub" style="color: #67e8f9;">ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន សងប្រាក់</div>
+        <div class="pro-auto-date-locked">
+          <span id="repayAutoDateKhmer">--/--/----</span>
+          <svg class="pro-lock-svg" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
         </div>
       </div>
 
-      <button class="loan-confirm-btn repay-mode" onclick="confirmRepayRequest()">បញ្ជាក់ការសងប្រាក់</button>
+      <button class="pro-submit-btn repay-mode" onclick="confirmRepayRequest()">បញ្ជាក់ការសងប្រាក់</button>
     </div>
+  </div>
+
+  <!-- ទំព័រ ព័ត៌មានអ្នកធានា (Guarantor Page) -->
+  <div class="page-view" id="pageGuarantor">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="backToLoanStep1()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">ព័ត៌មានអ្នកធានា</div>
+      <div style="width: 38px;"></div>
+    </div>
+
+    <!-- ប្រអប់ទឹកសមុទ្រស្ដើង បង្ហាញព័ត៌មានកម្ចី -->
+    <div class="pro-card pro-card-cyan-tint" style="margin-bottom: 16px;">
+      <div class="pro-info-line">- ចំនួនទឹកប្រាក់ខ្ចី: <span id="guarantorBorrowAmtText">0.00 USD</span></div>
+      <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់: <span id="guarantorBorrowDateText">--/--/----</span></div>
+      <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់: <span id="guarantorRepayDateText">--/--/----</span></div>
+    </div>
+
+    <!-- អក្សរ ចំនួនទឹកប្រាក់ខ្ចី រាងធំបន្តិច -->
+    <div class="pro-big-amount-display">
+      <span class="pro-big-title">ចំនួនទឹកប្រាក់ខ្ចី</span>
+      <span class="pro-big-val" id="guarantorBigAmount">$0.00</span>
+    </div>
+
+    <!-- ប្រអប់ 4 ជ្រុងតូចៗល្មមចំនួន 4 មួយជួរផ្ដេក មានសញ្ញា + សម្រាប់ Upload រូបភាព -->
+    <div class="pro-boxes-grid">
+      <div class="pro-upload-square" onclick="triggerGuarantorUpload(0)">
+        <input type="file" id="guarantorFile0" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 0)">
+        <div class="pro-upload-preview" id="guarPreview0">+</div>
+      </div>
+      <div class="pro-upload-square" onclick="triggerGuarantorUpload(1)">
+        <input type="file" id="guarantorFile1" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 1)">
+        <div class="pro-upload-preview" id="guarPreview1">+</div>
+      </div>
+      <div class="pro-upload-square" onclick="triggerGuarantorUpload(2)">
+        <input type="file" id="guarantorFile2" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 2)">
+        <div class="pro-upload-preview" id="guarPreview2">+</div>
+      </div>
+      <div class="pro-upload-square" onclick="triggerGuarantorUpload(3)">
+        <input type="file" id="guarantorFile3" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 3)">
+        <div class="pro-upload-preview" id="guarPreview3">+</div>
+      </div>
+    </div>
+
+    <!-- អក្សរណែនាំ -->
+    <div class="pro-upload-instruction">
+      សូមអ្នកថតជាសន្លឹករូបភាពអ្នកធានាខ្ចីប្រាក់ហើយបិទភ្ជាប់នៅក្នុងប្រអប់ខាងលើនេះ។
+    </div>
+
+    <!-- ប៊ូតុង បញ្ជាក់សារឡើងវិញ -->
+    <button class="pro-submit-btn pro-btn-red" onclick="submitFinalLoanWithGuarantor()">បញ្ជាក់សារឡើងវិញ</button>
   </div>
 
   <div class="page-view" id="pageDeposit">
