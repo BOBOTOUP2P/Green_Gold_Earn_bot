@@ -133,8 +133,12 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .pro-input-sym{color:#ef4444;font-size:26px;font-weight:800;line-height:1;}
 .pro-input-row input{background:none;border:none;outline:none;color:#ffffff;font-size:28px;font-weight:800;text-align:left;width:150px;font-family:inherit;}
 
-.pro-card-footer{display:flex;align-items:center;justify-content:space-between;width:100%;padding-top:10px;border-top:1px solid #1a1b22;font-size:12.5px;font-weight:600;}
-.pro-fee-text{color:#eab308;}
+/* Footer បែងចែកជា ២ ផ្នែក ៖ ខាងឆ្វេង (ថ្លៃការប្រាក់ + ថ្លៃរដ្ឋបាល) ខាងស្ដាំ (ទឹកប្រាក់ទទួលបាន) */
+.pro-card-footer-split{display:flex;align-items:flex-end;justify-content:space-between;width:100%;padding-top:10px;border-top:1px solid #1a1b22;font-size:12.5px;font-weight:600;}
+.pro-footer-left{display:flex;flex-direction:column;gap:3px;text-align:left;}
+.pro-rate-text{color:#eab308;}
+.pro-admin-fee-text{color:#f97316;}
+.pro-footer-right{text-align:right;}
 .pro-received-text{color:#22c55e;}
 .pro-received-text span{font-weight:700;}
 
@@ -151,7 +155,6 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .pro-selected-date-text{color:#ffffff;font-size:14px;font-weight:600;}
 .pro-arrow-svg{width:18px;height:18px;color:#00bcd4;pointer-events:none;}
 
-/* ប៊ូតុង បន្ត និង បញ្ជាក់ */
 .pro-submit-btn{width:100%;height:50px;background:#ef4444;border:none;border-radius:14px;color:#ffffff;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;box-shadow:0 4px 18px rgba(239,68,68,0.35);transition:all 0.25s ease;}
 .pro-submit-btn:active{transform:scale(0.98);}
 .pro-submit-btn.disabled{background:#1f2128;color:#52525b;box-shadow:none;border:1.2px solid #2d3039;pointer-events:none;}
@@ -162,15 +165,21 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .pro-info-line{font-size:13.5px;color:#d1d1d6;font-weight:600;margin-bottom:6px;}
 .pro-info-line span{color:#00bcd4;font-weight:700;}
 
-.pro-big-amount-display{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;margin:14px 0 16px 0;}
+.pro-big-amount-display{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;margin:12px 0 14px 0;}
 .pro-big-title{font-size:14.5px;color:#a1a1aa;font-weight:600;margin-bottom:4px;}
 .pro-big-val{font-size:32px;font-weight:800;color:#ef4444;letter-spacing:0.5px;}
 
-.pro-boxes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;margin-bottom:14px;}
-.pro-upload-square{width:100%;aspect-ratio:1/1;background:#101116;border:1.5px dashed #3f3f46;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s ease;overflow:hidden;position:relative;}
+.pro-boxes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;margin-bottom:10px;}
+.pro-upload-square{width:100%;aspect-ratio:1/1;background:#101116;border:1.4px dashed #3f3f46;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s ease;overflow:hidden;position:relative;}
 .pro-upload-square:active{transform:scale(0.95);border-color:#00bcd4;}
-.pro-upload-preview{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:300;color:#71717a;}
+.pro-upload-preview{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:300;color:#71717a;}
 .pro-upload-preview img{width:100%;height:100%;object-fit:cover;}
+
+/* ប្រអប់សរសេរ 8 ប្រអប់ (២ ជួរ) ទទឹងសមល្មម */
+.pro-inputs-grid-8{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;margin-bottom:12px;}
+.pro-mini-input{width:100%;height:38px;background:#0e0f14;border:1.2px solid #27272e;border-radius:10px;padding:0 6px;color:#ffffff;font-size:10.5px;font-family:inherit;text-align:center;outline:none;transition:border-color 0.2s ease;}
+.pro-mini-input:focus{border-color:#00bcd4;}
+.pro-mini-input::placeholder{color:#71717a;font-size:10px;}
 
 .pro-upload-instruction{font-size:12.5px;color:#94a3b8;line-height:1.5;text-align:center;margin-bottom:14px;padding:0 8px;}
 
