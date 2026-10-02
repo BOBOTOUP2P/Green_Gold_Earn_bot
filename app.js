@@ -53,6 +53,7 @@ onValue(configRef, (snapshot) => {
 let shownPopups = JSON.parse(localStorage.getItem("shown_success_popups") || "[]");
 let uploadedReceiptFile = null;
 
+// ចុចលើផ្ទៃទំនេរណាមួយដើម្បីបិទ Keyboard ដោយស្វ័យប្រវត្តិ និងបើកផ្ទាំងរំលឹកប្រសិនបើខ្ចីលើសសមតុល្យ
 document.addEventListener('click', function(e) {
   if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
     if (!document.activeElement.contains(e.target)) {
@@ -675,11 +676,13 @@ const pageHistory = document.getElementById('pageHistory');
 const pageInterest = document.getElementById('pageInterest');
 const pageLoan = document.getElementById('pageLoan');
 const pageGuarantor = document.getElementById('pageGuarantor');
+const pageLoanReview = document.getElementById('pageLoanReview');
 const switchDock = document.getElementById('switchDock');
 
 let guarantorImages = [null, null, null, null];
 let calCurrentDate = new Date();
 let selectedKhmerRepayDate = null;
+let hasShownReminderForCurrentValue = false;
 
 function checkLoanStep1Validation() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
@@ -691,7 +694,7 @@ function checkLoanStep1Validation() {
   }
 }
 
-// គណនាទឹកប្រាក់ទទួលបាន៖ ដក 1% (ការប្រាក់) និងដក 0.50 USD (ថ្លៃរដ្ឋបាល)
+// មុខងារដោះស្រាយពេលបញ្ចូលទឹកប្រាក់ខ្ចី
 window.handleLoanAmountInput = function(input) {
   input.value = input.value.replace(/[^0-9.]/g, '');
   const parts = input.value.split('.');
@@ -701,7 +704,45 @@ window.handleLoanAmountInput = function(input) {
   const val = parseFloat(input.value) || 0;
   const received = val > 0 ? Math.max(0, (val * 0.99) - 0.50) : 0;
   document.getElementById('loanReceivedAmount').innerText = received.toFixed(2) + " USD";
+
+  const iosSw = document.getElementById('loanAutoIosSwitch');
+  // ប្រសិនបើទឹកប្រាក់ខ្ចី ធំជាងសមតុល្យគណនី (ឧ. ខ្ចី > balance) ➔ បើកប៊ូតុង iOS Switch អូតូ
+  if (val > (currentUser.balance || 0)) {
+    if (iosSw) iosSw.classList.add('active');
+    hasShownReminderForCurrentValue = false; // រៀបចំបង្ហាញផ្ទាំងរំលឹកពេលបិទ Keyboard (blur)
+  } else {
+    if (iosSw) iosSw.classList.remove('active');
+  }
+
   checkLoanStep1Validation();
+};
+
+// ពេលបិទ Keyboard (blur) លើប្រអប់វាយលុយ ➔ បើកកូនផ្ទាំងសេចក្តីរំលឹក
+const borrowInputEl = document.getElementById('borrowAmountInput');
+if (borrowInputEl) {
+  borrowInputEl.addEventListener('blur', function() {
+    const val = parseFloat(this.value) || 0;
+    const currentBal = currentUser.balance || 0;
+    if (val > currentBal && !hasShownReminderForCurrentValue) {
+      openLoanReminderModal(currentBal, val);
+      hasShownReminderForCurrentValue = true;
+    }
+  });
+}
+
+function openLoanReminderModal(balanceVal, borrowVal) {
+  const modal = document.getElementById('loanReminderModal');
+  const bodyText = document.getElementById('loanReminderBodyText');
+  if (bodyText) {
+    bodyText.innerText = `ទឹកប្រាក់នៅក្នុងសមតុល្យគណនីរបស់អ្នកពេលនេះគឺ ($${balanceVal.toFixed(2)}) ដែលតូចជាងកម្ចីដែលអ្នកបានខ្ចីរហូត ($${borrowVal.toFixed(2)}) ។ ដូចនេះទឹកប្រាក់របស់អ្នកគឺនូវតែអាចធ្វើប្រតិបត្តិការខ្ចីបានធម្មតាដដែល។`;
+  }
+  if (modal) modal.classList.add('active');
+  lucide.createIcons();
+}
+
+window.closeLoanReminderModal = function() {
+  const modal = document.getElementById('loanReminderModal');
+  if (modal) modal.classList.remove('active');
 };
 
 window.openKhmerCalendar = function() {
@@ -755,6 +796,7 @@ window.openLoanPage = function() {
   pageAssets.classList.remove('active');
   pageLoan.classList.add('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
+  if (pageLoanReview) pageLoanReview.classList.remove('active');
   switchDock.style.display = 'none';
   switchLoanTab('borrow');
 
@@ -772,13 +814,19 @@ window.openLoanPage = function() {
   document.getElementById('borrowAmountInput').value = '';
   document.getElementById('loanReceivedAmount').innerText = '0.00 USD';
   document.getElementById('repayDueDateKhmerText').innerText = 'ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ...';
+  
+  const iosSw = document.getElementById('loanAutoIosSwitch');
+  if (iosSw) iosSw.classList.remove('active');
+
   selectedKhmerRepayDate = null;
+  hasShownReminderForCurrentValue = false;
   checkLoanStep1Validation();
 };
 
 window.closeLoanPage = function() {
   pageLoan.classList.remove('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
+  if (pageLoanReview) pageLoanReview.classList.remove('active');
   pageAssets.classList.add('active');
   switchDock.style.display = 'flex';
 };
@@ -839,9 +887,46 @@ window.handleGuarantorImg = function(input, index) {
   }
 };
 
-window.submitFinalLoanWithGuarantor = function() {
+window.goToLoanReviewPage = function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
-  alert("សំណើកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " រួមជាមួយឯកសារអ្នកធានា ត្រូវបានផ្ញើជូន Admin រួចរាល់!");
+  const received = val => val > 0 ? Math.max(0, (val * 0.99) - 0.50) : 0;
+  const today = new Date();
+
+  document.getElementById('reviewBigAmount').innerText = "$" + amt.toFixed(2);
+  document.getElementById('rvUserBalance').innerText = currentUser.balance.toFixed(2) + " USD";
+  document.getElementById('rvBorrowAmt').innerText = amt.toFixed(2) + " USD";
+  document.getElementById('rvReceivedAmt').innerText = received(amt).toFixed(2) + " USD";
+  document.getElementById('rvBorrowDate').innerText = formatKhmerDateFull(today);
+  document.getElementById('rvRepayDate').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
+
+  for (let i = 0; i < 4; i++) {
+    const nameVal = document.getElementById(`guarName${i}`).value.trim() || `អ្នកធានាទី${i+1}`;
+    const phoneVal = document.getElementById(`guarPhone${i}`).value.trim() || `(មិនមានលេខ)`;
+    
+    document.getElementById(`reviewName${i}`).innerText = nameVal;
+    document.getElementById(`reviewPhone${i}`).innerText = phoneVal;
+
+    const previewEl = document.getElementById(`guarPreview${i}`);
+    if (previewEl.querySelector('img')) {
+      document.getElementById(`reviewImg${i}`).innerHTML = previewEl.innerHTML;
+    } else {
+      document.getElementById(`reviewImg${i}`).innerHTML = '+';
+    }
+  }
+
+  pageGuarantor.classList.remove('active');
+  pageLoanReview.classList.add('active');
+  lucide.createIcons();
+};
+
+window.backToGuarantorPage = function() {
+  pageLoanReview.classList.remove('active');
+  pageGuarantor.classList.add('active');
+};
+
+window.submitFinalLoanRequest = function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  alert("សំណើរកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានផ្ញើជូន Admin ពិនិត្យដោយជោគជ័យ!");
   closeLoanPage();
 };
 
@@ -1045,6 +1130,7 @@ window.selectTab = function(tab) {
   pageInterest.classList.remove('active');
   pageLoan.classList.remove('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
+  if (pageLoanReview) pageLoanReview.classList.remove('active');
   switchDock.style.display = 'flex';
   
   if (tab === 'home') {
