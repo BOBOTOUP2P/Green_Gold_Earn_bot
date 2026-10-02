@@ -112,6 +112,25 @@
   </div>
 </div>
 
+<!-- កូនផ្ទាំងសេចក្តីរំលឹក (Loan Reminder Modal) -->
+<div id="loanReminderModal" class="loan-reminder-modal" onclick="closeLoanReminderModal()">
+  <div class="loan-reminder-card" onclick="event.stopPropagation()">
+    <div class="loan-reminder-header">
+      <div class="loan-reminder-icon-circle">
+        <i data-lucide="bell"></i>
+      </div>
+      <div class="loan-reminder-title">សេចក្តីរំលឹក</div>
+    </div>
+    <div class="loan-reminder-body" id="loanReminderBodyText">
+      ទឹកប្រាក់នៅក្នុងសមតុល្យគណនីរបស់អ្នកពេលនេះគឺ ($0.00) ដែលតូចជាងកម្ចីដែលអ្នកបានខ្ចីរហូត ($0.00) ។ ដូចនេះទឹកប្រាក់របស់អ្នកគឺនូវតែអាចធ្វើប្រតិបត្តិការខ្ចីបានធម្មតាដដែល។
+    </div>
+    <div class="loan-reminder-note">
+      ចំណាំ: ( នេះជាសាររំលឹកប្រាប់ប៉ុណ្ណោះ)
+    </div>
+    <button class="loan-reminder-btn" onclick="closeLoanReminderModal()">យល់ព្រម</button>
+  </div>
+</div>
+
 <!-- Modal ប្រតិទិនខ្មែរ -->
 <div id="khmerCalendarModal" class="khmer-cal-modal" onclick="closeKhmerCalendar()">
   <div class="khmer-cal-card" onclick="event.stopPropagation()">
@@ -220,7 +239,7 @@
                   <circle cx="142" cy="107" r="30" fill="#0b0b0e" stroke="#71717a" stroke-width="1.8"/>
                   <circle cx="138" cy="103" r="30" fill="url(#darkCoinGrad)" stroke="#71717a" stroke-width="2.2"/>
                   <circle cx="138" cy="103" r="23" fill="none" stroke="#71717a" stroke-width="1.5" stroke-dasharray="3,2"/>
-                  <text x="137" y="113" font-size="28" font-weight="900" fill="#d1d1d6" text-anchor="middle">$</text>
+                  <text x="137" y="113" font-size="28" font-weight="900" font-family="Arial" fill="#d1d1d6" text-anchor="middle">$</text>
                 </g>
                 <g class="pig-shake">
                   <path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round"/>
@@ -303,9 +322,17 @@
           <span class="pro-card-title">ចំនួនទឹកប្រាក់ដែលត្រូវខ្ចី ($)</span>
           <span class="pro-balance-tag">សមតុល្យគណនី: <span id="loanUserBalanceText">0.00 USD</span></span>
         </div>
-        <div class="pro-input-row">
-          <span class="pro-input-sym">$</span>
-          <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="borrowAmountInput" placeholder="0.00" oninput="handleLoanAmountInput(this)">
+        <div class="pro-input-split-row">
+          <!-- ប៊ូតុងអូសបិទបើកដូច iPhone នៅខាងឆ្វេងស្មើជួរ $0.00 -->
+          <div class="ios-switch-container">
+            <div class="ios-switch" id="loanAutoIosSwitch">
+              <div class="ios-switch-knob"></div>
+            </div>
+          </div>
+          <div class="pro-input-right-box">
+            <span class="pro-input-sym">$</span>
+            <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="borrowAmountInput" placeholder="0.00" oninput="handleLoanAmountInput(this)">
+          </div>
         </div>
         <div class="pro-card-footer-split">
           <div class="pro-footer-left">
@@ -413,7 +440,7 @@
       </div>
     </div>
 
-    <!-- ប្រអប់សរសេរចំនួន 2 ជួរស្មើនឹង 8 ប្រអប់ ទទឹងសមល្មមនឹងប្រអប់ Upload ខាងលើ -->
+    <!-- ប្រអប់សរសេរ 8 ប្រអប់ (២ ជួរ) ទទឹងសមល្មម -->
     <div class="pro-inputs-grid-8">
       <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName0">
       <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName1">
@@ -426,12 +453,60 @@
       <input type="tel" inputmode="numeric" class="pro-mini-input" placeholder="លេខទូរសព្ទ័" id="guarPhone3">
     </div>
 
-    <!-- អក្សរណែនាំ -->
     <div class="pro-upload-instruction">
       សូមអ្នកថតជាសន្លឹករូបភាពអ្នកធានាខ្ចីប្រាក់ហើយបិទភ្ជាប់នៅក្នុងប្រអប់ខាងលើនេះ។
     </div>
 
-    <button class="pro-submit-btn pro-btn-red" onclick="submitFinalLoanWithGuarantor()">បញ្ជាក់សារឡើងវិញ</button>
+    <button class="pro-submit-btn pro-btn-red" onclick="goToLoanReviewPage()">បញ្ជាក់សារឡើងវិញ</button>
+  </div>
+
+  <!-- ទំព័រ បញ្ជាក់ព័ត៌មានសារឡើងវិញ (Loan Review Page) -->
+  <div class="page-view" id="pageLoanReview">
+    <div class="history-topbar">
+      <button class="history-back-btn" onclick="backToGuarantorPage()"><i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i></button>
+      <div class="history-topbar-title">បញ្ជាក់ព័ត៌មានសារឡើងវិញ</div>
+      <div style="width: 38px;"></div>
+    </div>
+
+    <div class="pro-big-amount-display" style="margin: 6px 0 14px 0;">
+      <span class="pro-big-title">ចំនួនទឹកប្រាក់ខ្ចី</span>
+      <span class="pro-big-val" id="reviewBigAmount">$0.00</span>
+    </div>
+
+    <div class="pro-review-boxes-grid">
+      <div class="pro-review-item">
+        <div class="pro-review-square" id="reviewImg0">+</div>
+        <div class="pro-review-name" id="reviewName0">(…)</div>
+        <div class="pro-review-phone" id="reviewPhone0">...</div>
+      </div>
+      <div class="pro-review-item">
+        <div class="pro-review-square" id="reviewImg1">+</div>
+        <div class="pro-review-name" id="reviewName1">(…)</div>
+        <div class="pro-review-phone" id="reviewPhone1">...</div>
+      </div>
+      <div class="pro-review-item">
+        <div class="pro-review-square" id="reviewImg2">+</div>
+        <div class="pro-review-name" id="reviewName2">(…)</div>
+        <div class="pro-review-phone" id="reviewPhone2">...</div>
+      </div>
+      <div class="pro-review-item">
+        <div class="pro-review-square" id="reviewImg3">+</div>
+        <div class="pro-review-name" id="reviewName3">(…)</div>
+        <div class="pro-review-phone" id="reviewPhone3">...</div>
+      </div>
+    </div>
+
+    <div class="pro-card pro-card-cyan-tint" style="margin-bottom: 16px;">
+      <div class="pro-info-line">- សមតុល្យគណនី: <span id="rvUserBalance">0.00 USD</span></div>
+      <div class="pro-info-line">- ចំនួនទឹកប្រាក់ខ្ចី: <span id="rvBorrowAmt">0.00 USD</span></div>
+      <div class="pro-info-line">- ថ្លៃការប្រាក់: <span style="color: #eab308;">1.00%</span></div>
+      <div class="pro-info-line">- ថ្លៃរដ្ឋបាល: <span style="color: #f97316;">0.50 USD</span></div>
+      <div class="pro-info-line">- ទឹកប្រាក់ទទួលបាន: <span id="rvReceivedAmt" style="color: #22c55e;">0.00 USD</span></div>
+      <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់: <span id="rvBorrowDate">--/--/----</span></div>
+      <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់: <span id="rvRepayDate">--/--/----</span></div>
+    </div>
+
+    <button class="pro-submit-btn pro-btn-red" onclick="submitFinalLoanRequest()">ផ្ញើរសំណើរកម្ចី/ខ្ចីប្រាក់</button>
   </div>
 
   <div class="page-view" id="pageDeposit">
