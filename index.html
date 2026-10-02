@@ -224,12 +224,10 @@
                 </g>
                 <g class="pig-shake">
                   <path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round"/>
-                  <!-- ជើងក្រោយទាំង២ រក្សានៅដដែល -->
                   <rect x="75" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
                   <rect x="175" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
                   <ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 80 135 C 105 118, 150 118, 175 128" class="highlight-line"/>
-                  <!-- ជើងមុខទាំង២ ត្រូវបានដកចេញ ដើម្បីកុំឱ្យបាំងលេខទឹកប្រាក់ -->
                   <path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 166 107 C 170 88, 188 92, 182 110 Z" fill="#252530" opacity="0.6"/>
@@ -309,9 +307,14 @@
           <span class="pro-input-sym">$</span>
           <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="borrowAmountInput" placeholder="0.00" oninput="handleLoanAmountInput(this)">
         </div>
-        <div class="pro-card-footer">
-          <span class="pro-fee-text">ថ្លៃសេវ៉ា: 1.00%</span>
-          <span class="pro-received-text">ទឹកប្រាក់ទទួលបាន: <span id="loanReceivedAmount">0.00 USD</span></span>
+        <div class="pro-card-footer-split">
+          <div class="pro-footer-left">
+            <span class="pro-rate-text">ថ្លៃការប្រាក់: 1.00%</span>
+            <span class="pro-admin-fee-text">ថ្លៃរដ្ឋបាល: 0.50 USD</span>
+          </div>
+          <div class="pro-footer-right">
+            <span class="pro-received-text">ទឹកប្រាក់ទទួលបាន: <span id="loanReceivedAmount">0.00 USD</span></span>
+          </div>
         </div>
       </div>
 
@@ -379,7 +382,7 @@
       <div style="width: 38px;"></div>
     </div>
 
-    <div class="pro-card pro-card-cyan-tint" style="margin-bottom: 16px;">
+    <div class="pro-card pro-card-cyan-tint" style="margin-bottom: 14px;">
       <div class="pro-info-line">- ចំនួនទឹកប្រាក់ខ្ចី: <span id="guarantorBorrowAmtText">0.00 USD</span></div>
       <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់: <span id="guarantorBorrowDateText">--/--/----</span></div>
       <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់: <span id="guarantorRepayDateText">--/--/----</span></div>
@@ -390,6 +393,7 @@
       <span class="pro-big-val" id="guarantorBigAmount">$0.00</span>
     </div>
 
+    <!-- ប្រអប់ 4 ជ្រុងតូចៗល្មមចំនួន 4 មួយជួរផ្ដេក មានសញ្ញា + -->
     <div class="pro-boxes-grid">
       <div class="pro-upload-square" onclick="triggerGuarantorUpload(0)">
         <input type="file" id="guarantorFile0" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 0)">
@@ -409,6 +413,20 @@
       </div>
     </div>
 
+    <!-- ប្រអប់សរសេរចំនួន 2 ជួរស្មើនឹង 8 ប្រអប់ ទទឹងសមល្មមនឹងប្រអប់ Upload ខាងលើ -->
+    <div class="pro-inputs-grid-8">
+      <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName0">
+      <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName1">
+      <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName2">
+      <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName3">
+
+      <input type="tel" inputmode="numeric" class="pro-mini-input" placeholder="លេខទូរសព្ទ័" id="guarPhone0">
+      <input type="tel" inputmode="numeric" class="pro-mini-input" placeholder="លេខទូរសព្ទ័" id="guarPhone1">
+      <input type="tel" inputmode="numeric" class="pro-mini-input" placeholder="លេខទូរសព្ទ័" id="guarPhone2">
+      <input type="tel" inputmode="numeric" class="pro-mini-input" placeholder="លេខទូរសព្ទ័" id="guarPhone3">
+    </div>
+
+    <!-- អក្សរណែនាំ -->
     <div class="pro-upload-instruction">
       សូមអ្នកថតជាសន្លឹករូបភាពអ្នកធានាខ្ចីប្រាក់ហើយបិទភ្ជាប់នៅក្នុងប្រអប់ខាងលើនេះ។
     </div>
