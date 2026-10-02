@@ -681,7 +681,6 @@ let guarantorImages = [null, null, null, null];
 let calCurrentDate = new Date();
 let selectedKhmerRepayDate = null;
 
-// ពិនិត្យលក្ខខណ្ឌបើកប៊ូតុង «បន្ត» ឱ្យភ្លឺពណ៌ក្រហម
 function checkLoanStep1Validation() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
   const btnNext = document.getElementById('btnLoanStep1Next');
@@ -692,6 +691,7 @@ function checkLoanStep1Validation() {
   }
 }
 
+// គណនាទឹកប្រាក់ទទួលបាន៖ ដក 1% (ការប្រាក់) និងដក 0.50 USD (ថ្លៃរដ្ឋបាល)
 window.handleLoanAmountInput = function(input) {
   input.value = input.value.replace(/[^0-9.]/g, '');
   const parts = input.value.split('.');
@@ -699,7 +699,7 @@ window.handleLoanAmountInput = function(input) {
     input.value = parts[0] + '.' + parts.slice(1).join('');
   }
   const val = parseFloat(input.value) || 0;
-  const received = val > 0 ? (val * 0.99) : 0;
+  const received = val > 0 ? Math.max(0, (val * 0.99) - 0.50) : 0;
   document.getElementById('loanReceivedAmount').innerText = received.toFixed(2) + " USD";
   checkLoanStep1Validation();
 };
@@ -802,7 +802,6 @@ window.switchLoanTab = function(type) {
   }
 };
 
-// ពេលចុច «បន្ត» ➔ ចូលទៅកាន់ទំព័រ «ព័ត៌មានអ្នកធានា»
 window.goToLoanGuarantorPage = function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
   if (amt <= 0 || !selectedKhmerRepayDate) return;
