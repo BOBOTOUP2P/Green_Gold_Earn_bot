@@ -220,16 +220,16 @@
                   <circle cx="142" cy="107" r="30" fill="#0b0b0e" stroke="#71717a" stroke-width="1.8"/>
                   <circle cx="138" cy="103" r="30" fill="url(#darkCoinGrad)" stroke="#71717a" stroke-width="2.2"/>
                   <circle cx="138" cy="103" r="23" fill="none" stroke="#71717a" stroke-width="1.5" stroke-dasharray="3,2"/>
-                  <text x="137" y="113" font-size="28" font-weight="900" font-family="Arial" fill="#d1d1d6" text-anchor="middle">$</text>
+                  <text x="137" y="113" font-size="28" font-weight="900" fill="#d1d1d6" text-anchor="middle">$</text>
                 </g>
                 <g class="pig-shake">
                   <path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#71717a" stroke-width="2.5" stroke-linecap="round"/>
+                  <!-- ជើងក្រោយទាំង២ រក្សានៅដដែល -->
                   <rect x="75" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
                   <rect x="175" y="200" width="26" height="34" rx="10" fill="url(#pigBackLegGrad)" class="line-art"/>
                   <ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 80 135 C 105 118, 150 118, 175 128" class="highlight-line"/>
-                  <rect x="95" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art"/>
-                  <rect x="155" y="205" width="26" height="34" rx="10" fill="url(#pigDarkGrad)" class="line-art"/>
+                  <!-- ជើងមុខទាំង២ ត្រូវបានដកចេញ ដើម្បីកុំឱ្យបាំងលេខទឹកប្រាក់ -->
                   <path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigDarkGrad)" class="line-art"/>
                   <path d="M 166 107 C 170 88, 188 92, 182 110 Z" fill="#252530" opacity="0.6"/>
@@ -341,7 +341,6 @@
         </div>
       </div>
 
-      <!-- ប៊ូតុង បន្ត (ស្រអាប់បើមិនទាន់គ្រប់លក្ខខណ្ឌ ភ្លឺក្រហមពេលគ្រប់លក្ខខណ្ឌ) -->
       <button class="pro-submit-btn disabled" id="btnLoanStep1Next" onclick="goToLoanGuarantorPage()">បន្ត</button>
     </div>
 
@@ -380,20 +379,17 @@
       <div style="width: 38px;"></div>
     </div>
 
-    <!-- ប្រអប់ទឹកសមុទ្រស្ដើង បង្ហាញព័ត៌មានកម្ចី -->
     <div class="pro-card pro-card-cyan-tint" style="margin-bottom: 16px;">
       <div class="pro-info-line">- ចំនួនទឹកប្រាក់ខ្ចី: <span id="guarantorBorrowAmtText">0.00 USD</span></div>
       <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ ខ្ចីប្រាក់: <span id="guarantorBorrowDateText">--/--/----</span></div>
       <div class="pro-info-line">- ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់: <span id="guarantorRepayDateText">--/--/----</span></div>
     </div>
 
-    <!-- អក្សរ ចំនួនទឹកប្រាក់ខ្ចី រាងធំបន្តិច -->
     <div class="pro-big-amount-display">
       <span class="pro-big-title">ចំនួនទឹកប្រាក់ខ្ចី</span>
       <span class="pro-big-val" id="guarantorBigAmount">$0.00</span>
     </div>
 
-    <!-- ប្រអប់ 4 ជ្រុងតូចៗល្មមចំនួន 4 មួយជួរផ្ដេក មានសញ្ញា + សម្រាប់ Upload រូបភាព -->
     <div class="pro-boxes-grid">
       <div class="pro-upload-square" onclick="triggerGuarantorUpload(0)">
         <input type="file" id="guarantorFile0" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 0)">
@@ -413,12 +409,10 @@
       </div>
     </div>
 
-    <!-- អក្សរណែនាំ -->
     <div class="pro-upload-instruction">
       សូមអ្នកថតជាសន្លឹករូបភាពអ្នកធានាខ្ចីប្រាក់ហើយបិទភ្ជាប់នៅក្នុងប្រអប់ខាងលើនេះ។
     </div>
 
-    <!-- ប៊ូតុង បញ្ជាក់សារឡើងវិញ -->
     <button class="pro-submit-btn pro-btn-red" onclick="submitFinalLoanWithGuarantor()">បញ្ជាក់សារឡើងវិញ</button>
   </div>
 
