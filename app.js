@@ -53,7 +53,6 @@ onValue(configRef, (snapshot) => {
 let shownPopups = JSON.parse(localStorage.getItem("shown_success_popups") || "[]");
 let uploadedReceiptFile = null;
 
-// ចុចលើផ្ទៃទំនេរណាមួយដើម្បីបិទ Keyboard ដោយស្វ័យប្រវត្តិ និងបើកផ្ទាំងរំលឹកប្រសិនបើខ្ចីលើសសមតុល្យ
 document.addEventListener('click', function(e) {
   if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
     if (!document.activeElement.contains(e.target)) {
@@ -166,6 +165,8 @@ let currentUser = {
   totalInterestVal: 0.00,
   totalRateSummary: "+0.00%",
   balance: 0.00,
+  remainLoan: 0.00,
+  loanDueDate: "",
   maxPeak: 0.00,
   transactions: {},
   interests: {}
@@ -419,6 +420,8 @@ async function syncUserToDatabase() {
         totalDeposits: 0,
         baseBalance: 0.00,
         balance: 0.00,
+        remainLoan: 0.00,
+        loanDueDate: "",
         totalInterestVal: 0.00,
         totalRateSummary: "+0.00%",
         maxPeak: 0.00,
@@ -467,6 +470,8 @@ function updateUIFromData(data) {
   currentUser.totalInterestVal = data.totalInterestVal !== undefined ? Number(data.totalInterestVal) : 0.00;
   currentUser.totalRateSummary = data.totalRateSummary || "+0.00%";
   currentUser.balance = data.balance !== undefined ? Number(data.balance) : (currentUser.baseBalance + currentUser.totalInterestVal);
+  currentUser.remainLoan = data.remainLoan !== undefined ? Number(data.remainLoan) : 0.00;
+  currentUser.loanDueDate = data.loanDueDate || "";
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
   currentUser.interests = data.interests || {};
@@ -482,6 +487,18 @@ function updateUIFromData(data) {
 
   const loanBalText = document.getElementById('loanUserBalanceText');
   if (loanBalText) loanBalText.innerText = currentUser.balance.toFixed(2) + " USD";
+
+  // អាប់ដេតសមតុល្យលើទំព័រសងប្រាក់ (ផ្នែកខាងលើ)
+  const repayBalTop = document.getElementById('repayUserBalanceTopText');
+  if (repayBalTop) repayBalTop.innerText = currentUser.balance.toFixed(2) + " USD";
+
+  const remainLoanText = document.getElementById('remainLoanTotalText');
+  if (remainLoanText) remainLoanText.innerText = (currentUser.remainLoan || 0.00).toFixed(2) + " USD";
+
+  const repayFixedText = document.getElementById('repayFixedDueDateText');
+  if (repayFixedText) {
+    repayFixedText.innerText = currentUser.loanDueDate || "--/--/----";
+  }
 
   setPigBellyDisplay(currentUser.totalInterestVal.toFixed(2), currentUser.totalRateSummary);
 
@@ -682,7 +699,10 @@ const switchDock = document.getElementById('switchDock');
 let guarantorImages = [null, null, null, null];
 let calCurrentDate = new Date();
 let selectedKhmerRepayDate = null;
+let selectedKhmerNextRepayDate = null;
+let calendarTargetType = 'borrow_repay_date';
 let hasShownReminderForCurrentValue = false;
+let isRepayPartSwitchOn = false;
 
 function checkLoanStep1Validation() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
@@ -694,7 +714,6 @@ function checkLoanStep1Validation() {
   }
 }
 
-// មុខងារដោះស្រាយពេលបញ្ចូលទឹកប្រាក់ខ្ចី
 window.handleLoanAmountInput = function(input) {
   input.value = input.value.replace(/[^0-9.]/g, '');
   const parts = input.value.split('.');
@@ -706,10 +725,9 @@ window.handleLoanAmountInput = function(input) {
   document.getElementById('loanReceivedAmount').innerText = received.toFixed(2) + " USD";
 
   const iosSw = document.getElementById('loanAutoIosSwitch');
-  // ប្រសិនបើទឹកប្រាក់ខ្ចី ធំជាងសមតុល្យគណនី (ឧ. ខ្ចី > balance) ➔ បើកប៊ូតុង iOS Switch អូតូ
   if (val > (currentUser.balance || 0)) {
     if (iosSw) iosSw.classList.add('active');
-    hasShownReminderForCurrentValue = false; // រៀបចំបង្ហាញផ្ទាំងរំលឹកពេលបិទ Keyboard (blur)
+    hasShownReminderForCurrentValue = false;
   } else {
     if (iosSw) iosSw.classList.remove('active');
   }
@@ -717,7 +735,55 @@ window.handleLoanAmountInput = function(input) {
   checkLoanStep1Validation();
 };
 
-// ពេលបិទ Keyboard (blur) លើប្រអប់វាយលុយ ➔ បើកកូនផ្ទាំងសេចក្តីរំលឹក
+window.handleRepayAmountInput = function(input) {
+  input.value = input.value.replace(/[^0-9.]/g, '');
+  const val = parseFloat(input.value) || 0;
+  const actualPay = val > 0 ? (val + (val * 0.01) + 0.50) : 0;
+  document.getElementById('repayActualAmountText').innerText = actualPay.toFixed(2) + " USD";
+};
+
+// ប៊ូតុង iPhone Switch ផ្នែកសងប្រាក់៖ បិទ = សងទាំងអស់ / បើក = សងបន្តិចម្ដងៗ
+window.toggleRepayPartSwitch = function() {
+  isRepayPartSwitchOn = !isRepayPartSwitchOn;
+  const sw = document.getElementById('repayIosToggleSwitch');
+  const repayInput = document.getElementById('repayAmountInput');
+  const nextDateBlock = document.getElementById('repayNextDateBlock');
+  const setDateLabel = document.getElementById('repaySetDateLabel');
+  const fixedDateText = document.getElementById('repayFixedDueDateText');
+
+  const today = new Date();
+  const khmerToday = formatKhmerDateFull(today);
+
+  if (isRepayPartSwitchOn) {
+    sw.classList.add('active');
+    nextDateBlock.style.display = 'flex';
+    setDateLabel.innerText = "ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន";
+    fixedDateText.innerText = khmerToday;
+    repayInput.value = ''; // ទុកឱ្យវាយលុយសងបន្តិចម្ដងៗ (មិនលុបស្រមោល placeholder ទេ)
+    handleRepayAmountInput(repayInput);
+    openRepayCheckNoteModal();
+  } else {
+    sw.classList.remove('active');
+    nextDateBlock.style.display = 'none';
+    setDateLabel.innerText = "ថ្ងៃ/ខែ/ឆ្នាំ បានកំណត់ នៃការសងប្រាក់";
+    fixedDateText.innerText = currentUser.loanDueDate || "--/--/----";
+    const totalLoan = currentUser.remainLoan || 0;
+    repayInput.value = totalLoan > 0 ? totalLoan.toFixed(2) : '';
+    handleRepayAmountInput(repayInput);
+  }
+};
+
+window.openRepayCheckNoteModal = function() {
+  const modal = document.getElementById('repayCheckNoteModal');
+  if (modal) modal.classList.add('active');
+  lucide.createIcons();
+};
+
+window.closeRepayCheckNoteModal = function() {
+  const modal = document.getElementById('repayCheckNoteModal');
+  if (modal) modal.classList.remove('active');
+};
+
 const borrowInputEl = document.getElementById('borrowAmountInput');
 if (borrowInputEl) {
   borrowInputEl.addEventListener('blur', function() {
@@ -745,7 +811,8 @@ window.closeLoanReminderModal = function() {
   if (modal) modal.classList.remove('active');
 };
 
-window.openKhmerCalendar = function() {
+window.openKhmerCalendar = function(targetType) {
+  calendarTargetType = targetType || 'borrow_repay_date';
   calCurrentDate = new Date();
   renderKhmerCalendarGrid();
   document.getElementById('khmerCalendarModal').classList.add('active');
@@ -782,10 +849,16 @@ function renderKhmerCalendarGrid() {
     dayBtn.className = 'khmer-cal-day';
     dayBtn.innerText = toKhmerNumber(d);
     dayBtn.onclick = () => {
-      selectedKhmerRepayDate = new Date(year, month, d);
-      document.getElementById('repayDueDateKhmerText').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
+      const pickedDate = new Date(year, month, d);
+      if (calendarTargetType === 'borrow_repay_date') {
+        selectedKhmerRepayDate = pickedDate;
+        document.getElementById('repayDueDateKhmerText').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
+        checkLoanStep1Validation();
+      } else if (calendarTargetType === 'repay_next_date') {
+        selectedKhmerNextRepayDate = pickedDate;
+        document.getElementById('repayNextDueDateKhmerText').innerText = formatKhmerDateFull(selectedKhmerNextRepayDate);
+      }
       closeKhmerCalendar();
-      checkLoanStep1Validation();
     };
     grid.appendChild(dayBtn);
   }
@@ -810,6 +883,17 @@ window.openLoanPage = function() {
 
   const balText = document.getElementById('loanUserBalanceText');
   if (balText) balText.innerText = currentUser.balance.toFixed(2) + " USD";
+
+  const repayBalTop = document.getElementById('repayUserBalanceTopText');
+  if (repayBalTop) repayBalTop.innerText = currentUser.balance.toFixed(2) + " USD";
+
+  const remainLoanText = document.getElementById('remainLoanTotalText');
+  if (remainLoanText) remainLoanText.innerText = (currentUser.remainLoan || 0.00).toFixed(2) + " USD";
+
+  const repayFixedText = document.getElementById('repayFixedDueDateText');
+  if (repayFixedText) {
+    repayFixedText.innerText = currentUser.loanDueDate || "--/--/----";
+  }
   
   document.getElementById('borrowAmountInput').value = '';
   document.getElementById('loanReceivedAmount').innerText = '0.00 USD';
@@ -817,6 +901,11 @@ window.openLoanPage = function() {
   
   const iosSw = document.getElementById('loanAutoIosSwitch');
   if (iosSw) iosSw.classList.remove('active');
+
+  const repaySw = document.getElementById('repayIosToggleSwitch');
+  if (repaySw) repaySw.classList.remove('active');
+  isRepayPartSwitchOn = false;
+  document.getElementById('repayNextDateBlock').style.display = 'none';
 
   selectedKhmerRepayDate = null;
   hasShownReminderForCurrentValue = false;
@@ -924,18 +1013,38 @@ window.backToGuarantorPage = function() {
   pageGuarantor.classList.add('active');
 };
 
-window.submitFinalLoanRequest = function() {
+window.submitFinalLoanRequest = async function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  const dueDateKh = formatKhmerDateFull(selectedKhmerRepayDate);
+
+  await update(ref(db, `users/${currentUser.uid}`), {
+    remainLoan: (currentUser.remainLoan || 0) + amt,
+    loanDueDate: dueDateKh
+  });
+
   alert("សំណើរកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានផ្ញើជូន Admin ពិនិត្យដោយជោគជ័យ!");
   closeLoanPage();
 };
 
-window.confirmRepayRequest = function() {
+window.confirmRepayRequest = async function() {
   var amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
   if (amt <= 0) {
     alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រូវសង!");
     return;
   }
+
+  const currentTotal = currentUser.remainLoan || 0;
+  const newRemain = Math.max(0, currentTotal - amt);
+
+  let updatePayload = { remainLoan: newRemain };
+  if (isRepayPartSwitchOn && selectedKhmerNextRepayDate) {
+    updatePayload.loanDueDate = formatKhmerDateFull(selectedKhmerNextRepayDate);
+  } else if (newRemain === 0) {
+    updatePayload.loanDueDate = "";
+  }
+
+  await update(ref(db, `users/${currentUser.uid}`), updatePayload);
+
   alert("ការសងប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានបញ្ជាក់រួចរាល់!");
   closeLoanPage();
 };
