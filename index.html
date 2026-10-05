@@ -112,7 +112,7 @@
   </div>
 </div>
 
-<!-- កូនផ្ទាំងសេចក្តីរំលឹក (Loan Reminder Modal) -->
+<!-- កូនផ្ទាំងសេចក្តីរំលឹក -->
 <div id="loanReminderModal" class="loan-reminder-modal" onclick="closeLoanReminderModal()">
   <div class="loan-reminder-card" onclick="event.stopPropagation()">
     <div class="loan-reminder-header">
@@ -128,6 +128,23 @@
       ចំណាំ: ( នេះជាសាររំលឹកប្រាប់ប៉ុណ្ណោះ)
     </div>
     <button class="loan-reminder-btn" onclick="closeLoanReminderModal()">យល់ព្រម</button>
+  </div>
+</div>
+
+<!-- កូនផ្ទាំងការកត់សម្គាល់ ពេលអូសបើកប៊ូតុង iPhone សងប្រាក់ -->
+<div id="repayCheckNoteModal" class="loan-reminder-modal" onclick="closeRepayCheckNoteModal()">
+  <div class="loan-reminder-card" style="border-color: #00bcd4; box-shadow: 0 10px 35px rgba(0,188,212,0.3);" onclick="event.stopPropagation()">
+    <div class="loan-reminder-header">
+      <div class="loan-reminder-icon-circle" style="background: rgba(0,188,212,0.15); border-color: #00bcd4; color: #00bcd4; box-shadow: 0 0 20px rgba(0,188,212,0.4);">
+        <i data-lucide="info"></i>
+      </div>
+      <div class="loan-reminder-title">ការកត់សម្គាល់</div>
+    </div>
+    <div class="loan-reminder-body" style="text-align: left; font-size: 13px; line-height: 1.6;">
+      <div><b>ទី1.</b> ប្រសិនបើអ្នកជ្រើសរើសបើកប៊ូតុងនេះ មានន័យថា អ្នកបានសម្រេចចិត្ត <b>សងប្រាក់បន្តិចម្ដងៗ</b> ដែលបានខ្ចី។</div>
+      <div style="margin-top: 8px;">- <b>ទី2.</b> ប្រសិនបើអ្នកមិនជ្រើសរើសបើកប៊ូតុងនេះទេ មានន័យថា អ្នកបានសម្រេចចិត្ត <b>សងប្រាក់ទាំងអស់</b> ដែលបានខ្ចីសរុប។</div>
+    </div>
+    <button class="loan-reminder-btn" style="background: #00bcd4; color: #000000; margin-top: 14px;" onclick="closeRepayCheckNoteModal()">យល់ព្រម</button>
   </div>
 </div>
 
@@ -323,7 +340,6 @@
           <span class="pro-balance-tag">សមតុល្យគណនី: <span id="loanUserBalanceText">0.00 USD</span></span>
         </div>
         <div class="pro-input-split-row">
-          <!-- ប៊ូតុងអូសបិទបើកដូច iPhone នៅខាងឆ្វេងស្មើជួរ $0.00 -->
           <div class="ios-switch-container">
             <div class="ios-switch" id="loanAutoIosSwitch">
               <div class="ios-switch-knob"></div>
@@ -363,7 +379,7 @@
         </svg>
       </div>
 
-      <div class="pro-card pro-card-cyan-tint" onclick="openKhmerCalendar()">
+      <div class="pro-card pro-card-cyan-tint" onclick="openKhmerCalendar('borrow_repay_date')">
         <div class="pro-card-title-sub" style="color: #67e8f9;">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់</div>
         <div class="pro-select-date-wrapper">
           <span class="pro-selected-date-text" id="repayDueDateKhmerText">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ...</span>
@@ -377,23 +393,68 @@
     <!-- ផ្នែកសងប្រាក់ (Repay Section) -->
     <div id="loanRepaySection" class="loan-section">
       <div class="pro-card">
-        <div class="pro-card-header">
-          <span class="pro-card-title">ចំនួនទឹកប្រាក់ដែលត្រូវសង ($)</span>
+        <!-- ជួរខាងលើ៖ សមតុល្យគណនី នៅខាងលើប្រាក់កម្ចីមិនទាន់សងសរុប -->
+        <div class="repay-top-balance-bar">
+          <span class="pro-balance-tag" style="font-size: 13.5px;">សមតុល្យគណនី: <span id="repayUserBalanceTopText">0.00 USD</span></span>
         </div>
-        <div class="pro-input-row">
+
+        <!-- ជួរកណ្ដាលផ្ដេក៖ ខ្ញុំចង់សង ទាំងអស់/ម្ដងបន្តិចៗ (ប៊ូតុង iPhone) នៅឆ្វេង និង ប្រាក់កម្ចីមិនទាន់សងសរុប នៅស្ដាំ -->
+        <div class="repay-mid-control-row">
+          <div class="repay-switch-combo">
+            <span class="repay-combo-title">ខ្ញុំចង់សង ទាំងអស់ / ម្ដងបន្តិចៗ</span>
+            <div class="ios-switch" id="repayIosToggleSwitch" onclick="toggleRepayPartSwitch()">
+              <div class="ios-switch-knob"></div>
+            </div>
+          </div>
+          <div class="repay-remain-tag">
+            ប្រាក់កម្ចីមិនទាន់សងសរុប: <span id="remainLoanTotalText">0.00 USD</span>
+          </div>
+        </div>
+
+        <!-- ជួរប្រអប់វាយចំនួនទឹកប្រាក់សង -->
+        <div class="pro-input-row" style="padding-bottom: 4px;">
           <span class="pro-input-sym" style="color: #00bcd4;">$</span>
-          <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="repayAmountInput" placeholder="0.00" oninput="this.value = this.value.replace(/[^0-9.]/g, '')">
+          <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="repayAmountInput" placeholder="0.00" oninput="handleRepayAmountInput(this)">
+        </div>
+
+        <div class="pro-card-footer-split">
+          <div class="pro-footer-left">
+            <span class="pro-rate-text">ថ្លៃការប្រាក់: 1.00%</span>
+            <span class="pro-admin-fee-text">ថ្លៃរដ្ឋបាល: 0.50 USD</span>
+          </div>
+          <div class="pro-footer-right">
+            <span class="pro-received-text" style="color: #00bcd4;">ចំនួនទឹកប្រាក់សងរបស់អ្នក: <span id="repayActualAmountText">0.00 USD</span></span>
+          </div>
         </div>
       </div>
 
-      <div class="pro-card pro-card-cyan-tint">
-        <div class="pro-card-title-sub" style="color: #67e8f9;">ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន សងប្រាក់</div>
-        <div class="pro-auto-date-locked">
-          <span id="repayAutoDateKhmer">--/--/----</span>
-          <svg class="pro-lock-svg" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
+      <!-- ផ្នែកកាលបរិច្ឆេទសងប្រាក់ -->
+      <div id="repayDatesContainer" style="display:flex; flex-direction:column; gap:10px; width:100%;">
+        <div class="pro-card pro-card-red-tint">
+          <div class="pro-card-title-sub" id="repaySetDateLabel">ថ្ងៃ/ខែ/ឆ្នាំ បានកំណត់ នៃការសងប្រាក់</div>
+          <div class="pro-auto-date-locked">
+            <span id="repayFixedDueDateText">--/--/----</span>
+            <svg class="pro-lock-svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+        </div>
+
+        <div id="repayNextDateBlock" style="display:none; flex-direction:column; gap:10px; width:100%;">
+          <div class="pro-arrow-down-divider">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+          </div>
+          <div class="pro-card pro-card-cyan-tint" onclick="openKhmerCalendar('repay_next_date')">
+            <div class="pro-card-title-sub" style="color: #67e8f9;">កំណត់ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ សងប្រាក់ ថ្ងៃបន្ទាប់</div>
+            <div class="pro-select-date-wrapper">
+              <span class="pro-selected-date-text" id="repayNextDueDateKhmerText">ជ្រើសរើស ថ្ងៃ/ខែ/ឆ្នាំ...</span>
+              <svg class="pro-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="#00bcd4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -420,7 +481,6 @@
       <span class="pro-big-val" id="guarantorBigAmount">$0.00</span>
     </div>
 
-    <!-- ប្រអប់ 4 ជ្រុងតូចៗល្មមចំនួន 4 មួយជួរផ្ដេក មានសញ្ញា + -->
     <div class="pro-boxes-grid">
       <div class="pro-upload-square" onclick="triggerGuarantorUpload(0)">
         <input type="file" id="guarantorFile0" accept="image/*" style="display:none;" onchange="handleGuarantorImg(this, 0)">
@@ -440,7 +500,6 @@
       </div>
     </div>
 
-    <!-- ប្រអប់សរសេរ 8 ប្រអប់ (២ ជួរ) ទទឹងសមល្មម -->
     <div class="pro-inputs-grid-8">
       <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName0">
       <input type="text" class="pro-mini-input" placeholder="នាមត្រកូល/ឈ្មោះ" id="guarName1">
