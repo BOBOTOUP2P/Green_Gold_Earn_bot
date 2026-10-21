@@ -22,8 +22,7 @@ function calculateTierAdminFee(amt, ruleStr) {
       }
     }
   }
-  var singleFee = parseFloat(ruleStr) || 0.50;
-  return singleFee;
+  return parseFloat(ruleStr) || 0.50;
 }
 
 function renderCompanyUI() {
@@ -53,7 +52,12 @@ onValue(configRef, (snapshot) => {
   }
 });
 
-let shownPopups = JSON.parse(localStorage.getItem("shown_success_popups") || "[]"), uploadedReceiptFile = null;
+let shownPopups = JSON.parse(localStorage.getItem("shown_success_popups") || "[]");
+let shownLoanPopups = JSON.parse(localStorage.getItem("shown_loan_success_popups") || "[]");
+let uploadedReceiptFile = null;
+let loanReceiverReceiptFile = null;
+let selectedLoanBankName = "";
+
 document.addEventListener('click', function(e) {
   if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
     if (!document.activeElement.contains(e.target)) document.activeElement.blur();
@@ -105,7 +109,7 @@ startLoading();
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 const tgUser = tg?.initDataUnsafe?.user;
-let currentUser = { name: "(…)", uid: "", photo: "", totalDeposits: 0, baseBalance: 0.00, totalInterestVal: 0.00, totalRateSummary: "+0.00%", balance: 0.00, remainLoan: 0.00, loanDueDate: "", maxPeak: 0.00, transactions: {}, interests: {} };
+let currentUser = { name: "(…)", uid: "", photo: "", totalDeposits: 0, baseBalance: 0.00, totalInterestVal: 0.00, totalRateSummary: "+0.00%", balance: 0.00, remainLoan: 0.00, loanDueDate: "", maxPeak: 0.00, transactions: {}, interests: {}, loans: {} };
 
 if (tgUser && tgUser.id) {
   currentUser.name = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || "(…)";
@@ -155,6 +159,40 @@ async function sendAdminTelegramAlert(txn, photoFile) {
   } catch (e) {}
 }
 
+function sendAdminLoanTelegramAlert(loanItem, receiptFile) {
+  const token = CONFIG.adminBotToken, adminId = CONFIG.adminChatId;
+  if (!token || !adminId) return;
+  const caption = `🚨 <b>មានសំណើរកម្ចីប្រាក់ថ្មី (NEW BORROW REQUEST)</b> 🚨\n\n` +
+                  `👤 <b>ឈ្មោះអាខោន:</b> ${loanItem.name}\n` +
+                  `🆔 <b>User UID:</b> <code>${loanItem.uid}</code>\n` +
+                  `🏦 <b>វិធីទទួលប្រាក់:</b> ${loanItem.receiveMethod}\n` +
+                  `💳 <b>ឈ្មោះគណនីទទួល:</b> ${loanItem.receiverAccountName}\n` +
+                  `🧾 <b>លេខសម្គាល់:</b> <code>${loanItem.id}</code>\n` +
+                  `💰 <b>សមតុល្យគណនី:</b> ${loanItem.balance}\n` +
+                  `🔴 <b>ប្រាក់កម្ចីមិនទាន់សង:</b> ${loanItem.remainLoan}\n` +
+                  `💵 <b>ចំនួនទឹកប្រាក់ខ្ចី:</b> <b>+${loanItem.borrowAmount}</b>\n` +
+                  `👥 <b>អ្នកធានា:</b> ${loanItem.guarantorsSummary}\n` +
+                  `📊 <b>ថ្លៃការប្រាក់:</b> ${loanItem.interestRate}\n` +
+                  `💼 <b>ថ្លៃរដ្ឋបាល:</b> ${loanItem.adminFee}\n` +
+                  `🟢 <b>ទឹកប្រាក់ទទួលបាន:</b> <b>${loanItem.receivedAmount}</b>\n` +
+                  `📅 <b>ថ្ងៃខ្ចីប្រាក់:</b> ${loanItem.borrowDate}\n` +
+                  `🗓 <b>ថ្ងៃសងប្រាក់:</b> ${loanItem.repayDate}\n` +
+                  `⏰ <b>កាលបរិច្ឆេទ:</b> ${loanItem.date}\n` +
+                  `⏳ <b>ស្ថានភាព:</b> pending…`;
+  try {
+    if (receiptFile) {
+      const formData = new FormData();
+      formData.append('chat_id', adminId);
+      formData.append('photo', receiptFile);
+      formData.append('caption', caption);
+      formData.append('parse_mode', 'HTML');
+      fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData }).catch(()=>{});
+    } else {
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: adminId, text: caption, parse_mode: 'HTML' }) }).catch(()=>{});
+    }
+  } catch(e) {}
+}
+
 function showSuccessPopup(txn) {
   document.getElementById('scAmountHeader').innerText = txn.amount.replace(/[^0-9.]/g, '');
   document.getElementById('scTxnID').innerText = txn.id;
@@ -166,6 +204,25 @@ function showSuccessPopup(txn) {
   document.getElementById('scAmount').innerText = txn.amount;
   document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
   document.getElementById('pageSuccess').classList.add('active');
+  const dock = document.getElementById('switchDock');
+  if (dock) dock.style.display = 'none';
+  lucide.createIcons();
+}
+
+function showLoanSuccessPopup(loan) {
+  document.getElementById('scLoanAmountHeader').innerText = (loan.borrowAmount || "0.00").replace(/[^0-9.]/g, '');
+  document.getElementById('scLoanTxnID').innerText = loan.id;
+  document.getElementById('scLoanAccountName').innerText = currentUser.name;
+  document.getElementById('scLoanUID').innerText = currentUser.uid;
+  document.getElementById('scLoanBank').innerText = loan.receiveMethod || 'ABA Bank';
+  document.getElementById('scLoanReceiverName').innerText = loan.receiverAccountName || '...';
+  document.getElementById('scLoanBorrowAmt').innerText = loan.borrowAmount;
+  document.getElementById('scLoanRecAmt').innerText = loan.receivedAmount;
+  document.getElementById('scLoanRepayDate').innerText = loan.repayDate;
+  document.getElementById('scLoanDate').innerText = loan.date;
+
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.getElementById('pageLoanSuccess').classList.add('active');
   const dock = document.getElementById('switchDock');
   if (dock) dock.style.display = 'none';
   lucide.createIcons();
@@ -200,7 +257,7 @@ function renderHistory(txns) {
     let statusText = 'កំពុងត្រួតពិនិត្យ…', statusClass = '', cardClass = '';
     if (statusLower === 'done' || statusLower === 'ទទួលបានជោគជ័យ') { statusText = 'ទទួលបានជោគជ័យ'; statusClass = 'txt-done'; cardClass = 'status-done'; }
     else if (statusLower === 'refuse') { statusText = 'Refuse'; statusClass = 'txt-refuse'; cardClass = 'status-refuse'; }
-    html += `<div class="transaction-card ${cardClass}" onclick="openCardDetail(this)" data-id="${t.id}" data-name="${t.name || currentUser.name}" data-uid="${t.uid || currentUser.uid}" data-bank="${t.bank || 'KHQR'}" data-sender="${t.sender || '(មិនបានបញ្ជាក់)'}" data-date="${t.date}" data-amount="${t.amount}"><div class="trans-left"><div class="trans-icon-box"><svg class="mini-pig-svg" viewBox="0 0 280 280"><defs><linearGradient id="miniPig_${t.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs><g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g><g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g></svg></div><div class="trans-info"><div class="trans-title">ដាក់ប្រាក់</div><div class="trans-date">${t.date}</div></div></div><div class="trans-right"><div class="trans-amount">${t.amount}</div><div class="trans-status ${statusClass}">${statusText}</div></div></div>`;
+    html += `<div class="transaction-card ${cardClass}" onclick="openCardDetail(this)" data-id="${t.id}" data-name="${t.name || currentUser.name}" data-uid="${t.uid || currentUser.uid}" data-bank="${t.bank || 'KHQR'}" data-sender="${t.sender || '(មិនបានបញ្ជាក់)'}" data-date="${t.date}" data-amount="${t.amount}"><div class="trans-left"><div class="trans-icon-box"><svg class="mini-pig-svg" viewBox="0 0 280 280"><defs><linearGradient id="miniPig_${t.id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1c1c24"/><stop offset="100%" stop-color="#0b0b0e"/></linearGradient></defs><g class="coin-drop-loop"><circle cx="138" cy="103" r="28" fill="#121217" stroke="#ffffff" stroke-width="3.5"/><text x="137" y="113" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">$</text></g><g class="pig-shake"><path d="M 50 160 Q 28 150 33 133 Q 45 120 56 138" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><rect x="75" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="175" y="200" width="26" height="34" rx="10" fill="#08080a" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="140" cy="170" rx="86" ry="69" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="95" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><rect x="155" y="205" width="26" height="34" rx="10" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 90 115 C 78 82, 115 76, 120 110 Z" fill="url(#miniPig_${t.id})" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><path d="M 160 110 C 165 76, 202 82, 190 115 Z" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="138" cy="115" rx="30" ry="7" fill="#08080b" stroke="#ffffff" stroke-width="2.5"/><circle cx="175" cy="150" r="5" fill="#ffffff"/><circle cx="205" cy="147" r="5" fill="#ffffff"/><ellipse cx="205" cy="172" rx="22" ry="16" fill="url(#pigOptG1)" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/><ellipse cx="199" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/><ellipse cx="212" cy="172" rx="3.5" ry="5.5" fill="#ffffff"/></g></svg></div><div class="trans-info"><div class="trans-title">ដាក់ប្រាក់</div><div class="trans-date">${t.date}</div></div></div><div class="trans-right"><div class="trans-amount">${t.amount}</div><div class="trans-status ${statusClass}">${statusText}</div></div></div>`;
   });
   historyList.innerHTML = html;
 }
@@ -217,11 +274,75 @@ function renderInterests(interests) {
   interestList.innerHTML = html;
 }
 
+function renderLoanHistory(loans) {
+  const loanList = document.getElementById('loanHistoryList'), emptyState = document.getElementById('loanHistoryEmptyState');
+  if (!loans || Object.keys(loans).length === 0) { loanList.innerHTML = ''; loanList.style.display = 'none'; emptyState.style.display = 'flex'; return; }
+  emptyState.style.display = 'none'; loanList.style.display = 'flex';
+  const sortedKeys = Object.keys(loans).sort((a,b) => (loans[b].timestamp || 0) - (loans[a].timestamp || 0));
+  let html = '';
+  sortedKeys.forEach(key => {
+    const l = loans[key], statusLower = (l.status || 'pending…').toLowerCase();
+    let statusText = 'កំពុងត្រួតពិនិត្យ…', statusClass = '', cardClass = 'loan-card';
+    if (statusLower === 'done' || statusLower === 'ទទួលបានជោគជ័យ') { statusText = 'ទទួលបានជោគជ័យ'; statusClass = 'txt-done'; cardClass = 'loan-card status-done'; }
+    else if (statusLower === 'refuse') { statusText = 'Refuse'; statusClass = 'txt-refuse'; cardClass = 'loan-card status-refuse'; }
+
+    html += `<div class="transaction-card ${cardClass}" onclick="openLoanDetailModalFromEl(this)" data-id="${l.id}" data-name="${l.name || currentUser.name}" data-uid="${l.uid || currentUser.uid}" data-bank="${l.receiveMethod || 'ABA Bank'}" data-receiver="${l.receiverAccountName || '...'}" data-borrow="${l.borrowAmount}" data-rate="${l.interestRate}" data-admin="${l.adminFee}" data-rec="${l.receivedAmount}" data-bdate="${l.borrowDate}" data-rdate="${l.repayDate}" data-date="${l.date}" data-guar="${l.guarantorsSummary || '...'}" data-status="${statusText}">
+      <div class="trans-left">
+        <div class="trans-icon-box loan-icon-box">
+          <svg class="mini-wallet-anim-svg" viewBox="0 0 32 32">
+            <g class="mw-bill">
+              <rect x="7" y="5" width="18" height="9" rx="2" fill="#0e0e12" stroke="#ffffff" stroke-width="1.3"/>
+              <text x="16" y="12" font-size="7" font-weight="900" fill="#ffffff" text-anchor="middle">$</text>
+            </g>
+            <rect x="4" y="11" width="24" height="17" rx="3.5" fill="#08080b" stroke="#ffffff" stroke-width="1.4"/>
+            <path d="M 4 14 L 28 14 L 28 25 C 28 26.5 26.5 28 25 28 L 7 28 C 5.5 28 4 26.5 4 25 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="1.3"/>
+            <path d="M 6 16 L 26 16" stroke="#71717a" stroke-width="1.2" stroke-dasharray="2,1.5"/>
+            <g class="mw-flap">
+              <path d="M 20 14 L 28 14 C 29.5 14 30 16 30 18.5 C 30 21 29.5 23 28 23 L 20 23 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="1.3"/>
+              <circle cx="26" cy="18.5" r="2.2" fill="#ffffff"/>
+            </g>
+          </svg>
+        </div>
+        <div class="trans-info">
+          <div class="trans-title" style="color:#ffffff;">កម្ចីប្រាក់</div>
+          <div class="trans-date">${l.date}</div>
+        </div>
+      </div>
+      <div class="trans-right">
+        <div class="trans-amount">+${l.borrowAmount}</div>
+        <div class="trans-status ${statusClass}">${statusText}</div>
+      </div>
+    </div>`;
+  });
+  loanList.innerHTML = html;
+}
+
+window.openLoanDetailModalFromEl = function(el) {
+  document.getElementById('dtlLoanID').innerText = el.getAttribute('data-id');
+  document.getElementById('dtlLoanAccountName').innerText = el.getAttribute('data-name');
+  document.getElementById('dtlLoanUID').innerText = el.getAttribute('data-uid');
+  document.getElementById('dtlLoanBank').innerText = el.getAttribute('data-bank');
+  document.getElementById('dtlLoanReceiverName').innerText = el.getAttribute('data-receiver');
+  document.getElementById('dtlLoanBorrowAmt').innerText = el.getAttribute('data-borrow');
+  document.getElementById('dtlLoanRate').innerText = el.getAttribute('data-rate');
+  document.getElementById('dtlLoanAdminFee').innerText = el.getAttribute('data-admin');
+  document.getElementById('dtlLoanRecAmt').innerText = el.getAttribute('data-rec');
+  document.getElementById('dtlLoanBorrowDate').innerText = el.getAttribute('data-bdate');
+  document.getElementById('dtlLoanRepayDate').innerText = el.getAttribute('data-rdate');
+  document.getElementById('dtlLoanDate').innerText = el.getAttribute('data-date');
+  document.getElementById('dtlLoanGuarantors').innerText = el.getAttribute('data-guar');
+  document.getElementById('loanDetailModal').classList.add('active');
+};
+
+window.closeLoanDetailModal = function() {
+  document.getElementById('loanDetailModal').classList.remove('active');
+};
+
 async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid), snapshot = await get(userRef);
     if (!snapshot.exists()) {
-      await set(userRef, { name: currentUser.name, uid: currentUser.uid, photo: currentUser.photo, totalDeposits: 0, baseBalance: 0.00, balance: 0.00, remainLoan: 0.00, loanDueDate: "", totalInterestVal: 0.00, totalRateSummary: "+0.00%", maxPeak: 0.00, transactions: {}, interests: {}, createdAt: Date.now() });
+      await set(userRef, { name: currentUser.name, uid: currentUser.uid, photo: currentUser.photo, totalDeposits: 0, baseBalance: 0.00, balance: 0.00, remainLoan: 0.00, loanDueDate: "", totalInterestVal: 0.00, totalRateSummary: "+0.00%", maxPeak: 0.00, transactions: {}, interests: {}, loans: {}, createdAt: Date.now() });
       syncUserToSheetUI();
     } else {
       updateUIFromData(snapshot.val());
@@ -237,6 +358,15 @@ async function syncUserToDatabase() {
               showSuccessPopup(txn);
               shownPopups.push(txn.id);
               localStorage.setItem("shown_success_popups", JSON.stringify(shownPopups));
+            }
+          });
+        }
+        if (d.loans) {
+          Object.values(d.loans).forEach(loan => {
+            if ((loan.status || '').toLowerCase() === 'done' && !shownLoanPopups.includes(loan.id)) {
+              showLoanSuccessPopup(loan);
+              shownLoanPopups.push(loan.id);
+              localStorage.setItem("shown_loan_success_popups", JSON.stringify(shownLoanPopups));
             }
           });
         }
@@ -259,6 +389,7 @@ function updateUIFromData(data) {
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
   currentUser.interests = data.interests || {};
+  currentUser.loans = data.loans || {};
 
   const rowCount = document.getElementById('myRowCount');
   if (rowCount) rowCount.innerText = window.getMaskedRank(currentUser.balance);
@@ -282,6 +413,7 @@ function updateUIFromData(data) {
 
   renderHistory(currentUser.transactions);
   renderInterests(currentUser.interests);
+  renderLoanHistory(currentUser.loans);
   checkStep1Validation();
 }
 syncUserToDatabase();
@@ -342,11 +474,18 @@ window.checkStep1Validation = function() {
 window.openBankModal = function() { document.getElementById('bankModal').classList.add('active'); };
 window.closeBankModal = function() { document.getElementById('bankModal').classList.remove('active'); };
 window.selectBank = function(name) {
-  selectedBankName = name;
-  document.getElementById('selectedMethodText').innerText = name;
-  document.getElementById('selectedMethodText').style.color = "#ffffff";
+  if (document.getElementById('pageLoanPersonalInfo')?.classList.contains('active')) {
+    selectedLoanBankName = name;
+    const txt = document.getElementById('loanSelectedBankText');
+    if (txt) { txt.innerText = name; txt.style.color = "#ffffff"; }
+    checkLoanPersonalInfoValidation();
+  } else {
+    selectedBankName = name;
+    document.getElementById('selectedMethodText').innerText = name;
+    document.getElementById('selectedMethodText').style.color = "#ffffff";
+    checkStep1Validation();
+  }
   closeBankModal();
-  checkStep1Validation();
 };
 
 window.openTransDetailModal = function(data) {
@@ -376,7 +515,7 @@ window.openInterestDetailModal = function(data) {
 };
 window.closeInterestDetailModal = function() { document.getElementById('interestDetailModal').classList.remove('active'); };
 
-const pageAssets = document.getElementById('pageAssets'), pageDeposit = document.getElementById('pageDeposit'), pageHistory = document.getElementById('pageHistory'), pageInterest = document.getElementById('pageInterest'), pageLoan = document.getElementById('pageLoan'), pageGuarantor = document.getElementById('pageGuarantor'), pageLoanReview = document.getElementById('pageLoanReview'), switchDock = document.getElementById('switchDock');
+const pageAssets = document.getElementById('pageAssets'), pageDeposit = document.getElementById('pageDeposit'), pageHistory = document.getElementById('pageHistory'), pageInterest = document.getElementById('pageInterest'), pageLoan = document.getElementById('pageLoan'), pageLoanPersonalInfo = document.getElementById('pageLoanPersonalInfo'), pageGuarantor = document.getElementById('pageGuarantor'), pageLoanReview = document.getElementById('pageLoanReview'), pageLoanHistory = document.getElementById('pageLoanHistory'), pageLoanSuccess = document.getElementById('pageLoanSuccess'), switchDock = document.getElementById('switchDock');
 let guarantorImages = [null, null, null, null], calCurrentDate = new Date(), selectedKhmerRepayDate = null, selectedKhmerNextRepayDate = null, calendarTargetType = 'borrow_repay_date', hasShownReminderForCurrentValue = false, isRepayPartSwitchOn = false;
 
 function checkLoanStep1Validation() {
@@ -503,8 +642,10 @@ function renderKhmerCalendarGrid() {
 window.openLoanPage = function() {
   pageAssets.classList.remove('active');
   pageLoan.classList.add('active');
+  if (pageLoanPersonalInfo) pageLoanPersonalInfo.classList.remove('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
   if (pageLoanReview) pageLoanReview.classList.remove('active');
+  if (pageLoanHistory) pageLoanHistory.classList.remove('active');
   switchDock.style.display = 'none';
   switchLoanTab('borrow');
 
@@ -531,10 +672,23 @@ window.openLoanPage = function() {
 
 window.closeLoanPage = function() {
   pageLoan.classList.remove('active');
+  if (pageLoanPersonalInfo) pageLoanPersonalInfo.classList.remove('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
   if (pageLoanReview) pageLoanReview.classList.remove('active');
+  if (pageLoanHistory) pageLoanHistory.classList.remove('active');
   pageAssets.classList.add('active');
   switchDock.style.display = 'flex';
+};
+
+window.openLoanHistoryPage = function() {
+  pageLoan.classList.remove('active');
+  pageLoanHistory.classList.add('active');
+  switchDock.style.display = 'none';
+};
+
+window.closeLoanHistoryPage = function() {
+  pageLoanHistory.classList.remove('active');
+  pageLoan.classList.add('active');
 };
 
 window.switchLoanTab = function(type) {
@@ -552,6 +706,34 @@ window.switchLoanTab = function(type) {
   }
 };
 
+window.goToLoanPersonalInfoPage = function() {
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  if (amt <= 0 || !selectedKhmerRepayDate) return;
+  pageLoan.classList.remove('active');
+  pageLoanPersonalInfo.classList.add('active');
+  checkLoanPersonalInfoValidation();
+  lucide.createIcons();
+};
+
+window.checkLoanPersonalInfoValidation = function() {
+  const inputVal = document.getElementById('loanReceiverBankNameInput').value.trim();
+  const btn = document.getElementById('btnLoanPersonalInfoNext');
+  if (selectedLoanBankName !== "" && inputVal !== "" && loanReceiverReceiptFile) {
+    btn.classList.remove('disabled');
+  } else {
+    btn.classList.add('disabled');
+  }
+};
+
+window.handleLoanReceiverReceiptUpload = function(input) {
+  if (input.files && input.files[0]) {
+    loanReceiverReceiptFile = input.files[0];
+    document.getElementById('loanReceiverReceiptFileName').innerText = "បានជ្រើសរើស៖ " + input.files[0].name;
+    document.getElementById('loanReceiverReceiptFileName').style.color = "#00bcd4";
+    checkLoanPersonalInfoValidation();
+  }
+};
+
 window.goToLoanGuarantorPage = function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
   if (amt <= 0 || !selectedKhmerRepayDate) return;
@@ -559,12 +741,14 @@ window.goToLoanGuarantorPage = function() {
   document.getElementById('guarantorBorrowDateText').innerText = formatKhmerDateFull(new Date());
   document.getElementById('guarantorRepayDateText').innerText = formatKhmerDateFull(selectedKhmerRepayDate);
   document.getElementById('guarantorBigAmount').innerText = "$" + amt.toFixed(2);
-  pageLoan.classList.remove('active');
+  pageLoanPersonalInfo.classList.remove('active');
   pageGuarantor.classList.add('active');
   lucide.createIcons();
 };
 
-window.backToLoanStep1 = function() { pageGuarantor.classList.remove('active'); pageLoan.classList.add('active'); };
+window.backToLoanStep1 = function() { pageLoanPersonalInfo.classList.remove('active'); pageLoan.classList.add('active'); };
+window.backToLoanPersonalInfoPage = function() { pageGuarantor.classList.remove('active'); pageLoanPersonalInfo.classList.add('active'); };
+
 window.triggerGuarantorUpload = function(index) { document.getElementById(`guarantorFile${index}`).click(); };
 window.handleGuarantorImg = function(input, index) {
   if (input.files && input.files[0]) {
@@ -580,8 +764,11 @@ window.goToLoanReviewPage = function() {
   const rateNum = (parseFloat(CONFIG.borrowInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(amt, CONFIG.borrowAdminFeeRule);
   const received = amt > 0 ? Math.max(0, amt - (amt * rateNum) - adminFee) : 0;
+  const receiverAccName = document.getElementById('loanReceiverBankNameInput').value.trim() || '...';
 
   document.getElementById('reviewBigAmount').innerText = "$" + amt.toFixed(2);
+  document.getElementById('rvLoanBank').innerText = selectedLoanBankName || 'ABA Bank';
+  document.getElementById('rvLoanReceiverName').innerText = receiverAccName;
   document.getElementById('rvUserBalance').innerText = currentUser.balance.toFixed(2) + " USD";
   document.getElementById('rvBorrowAmt').innerText = amt.toFixed(2) + " USD";
   document.getElementById('rvBorrowRate').innerText = CONFIG.borrowInterestRate || "1.00%";
@@ -602,12 +789,74 @@ window.goToLoanReviewPage = function() {
 };
 
 window.backToGuarantorPage = function() { pageLoanReview.classList.remove('active'); pageGuarantor.classList.add('active'); };
-window.submitFinalLoanRequest = async function() {
-  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0, dueDateKh = formatKhmerDateFull(selectedKhmerRepayDate);
-  await update(ref(db, `users/${currentUser.uid}`), { remainLoan: (currentUser.remainLoan || 0) + amt, loanDueDate: dueDateKh });
-  alert("សំណើរកម្ចីប្រាក់ចំនួន $" + amt.toFixed(2) + " ត្រូវបានផ្ញើជូន Admin ពិនិត្យដោយជោគជ័យ!");
-  closeLoanPage();
+
+window.submitFinalLoanRequest = function() {
+  const btn = document.getElementById('btnSubmitFinalLoan');
+  if (btn) btn.disabled = true;
+
+  const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+  const rateNum = (parseFloat(CONFIG.borrowInterestRate) || 1.00) / 100;
+  const adminFee = calculateTierAdminFee(amt, CONFIG.borrowAdminFeeRule);
+  const received = amt > 0 ? Math.max(0, amt - (amt * rateNum) - adminFee) : 0;
+  const dueDateKh = formatKhmerDateFull(selectedKhmerRepayDate);
+  const todayKh = formatKhmerDateFull(new Date());
+  const nowStr = getFormattedDateTime();
+  const loanId = 'LOAN-' + Math.floor(1000000 + Math.random() * 9000000);
+  const receiverAccName = document.getElementById('loanReceiverBankNameInput').value.trim() || '...';
+
+  let gList = [];
+  for (let i = 0; i < 4; i++) {
+    const gName = document.getElementById(`guarName${i}`).value.trim();
+    const gPhone = document.getElementById(`guarPhone${i}`).value.trim();
+    if (gName || gPhone) gList.push(`${gName || 'អ្នកធានា'}(${gPhone || 'គ្មានលេខ'})`);
+  }
+  const guarantorsSummary = gList.length > 0 ? gList.join(', ') : '៤ នាក់ (គ្មានឈ្មោះ)';
+
+  const loanItem = {
+    id: loanId,
+    name: currentUser.name,
+    uid: currentUser.uid,
+    receiveMethod: selectedLoanBankName || 'ABA Bank',
+    receiverAccountName: receiverAccName,
+    balance: currentUser.balance.toFixed(2) + " USD",
+    remainLoan: (currentUser.remainLoan || 0).toFixed(2) + " USD",
+    borrowAmount: amt.toFixed(2) + " USD",
+    guarantorsSummary: guarantorsSummary,
+    interestRate: CONFIG.borrowInterestRate || "1.00%",
+    adminFee: adminFee.toFixed(2) + " USD",
+    receivedAmount: received.toFixed(2) + " USD",
+    borrowDate: todayKh,
+    repayDate: dueDateKh,
+    date: nowStr,
+    status: 'pending…',
+    timestamp: Date.now()
+  };
+
+  set(ref(db, `users/${currentUser.uid}/loans/${loanId}`), loanItem).catch(()=>{});
+
+  try {
+    fetch(GOOGLE_SHEET_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: "loan_request", ...loanItem })
+    });
+  } catch(e) {}
+
+  sendAdminLoanTelegramAlert(loanItem, loanReceiverReceiptFile);
+
+  pageLoanReview.classList.remove('active');
+  pageLoanHistory.classList.add('active');
+  switchDock.style.display = 'none';
+
+  if (btn) btn.disabled = false;
 };
+
+document.getElementById('btnConfirmLoanSuccess')?.addEventListener('click', () => {
+  document.getElementById('pageLoanSuccess').classList.remove('active');
+  pageLoanHistory.classList.add('active');
+  switchDock.style.display = 'none';
+});
 
 window.confirmRepayRequest = async function() {
   var amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
@@ -660,13 +909,24 @@ window.handleReceiptUpload = function(input) {
   }
 };
 
-window.submitFinalDeposit = async function() {
+window.submitFinalDeposit = function() {
   if (!hasUploadedReceipt || hasPendingDeposit()) return;
   const val = currentDepositAmount || 0.00, senderName = document.getElementById('senderAccountName').value.trim() || '(មិនបានបញ្ជាក់)', dateStr = getFormattedDateTime(), txnID = 'TXN-' + Math.floor(1000000 + Math.random() * 9000000);
   const txnData = { id: txnID, name: currentUser.name, uid: currentUser.uid, bank: selectedBankName, sender: senderName, date: dateStr, amount: '+' + val.toFixed(2) + ' USD', balance: currentUser.balance.toFixed(2) + ' USD', status: 'pending…', timestamp: Date.now() };
-  await set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData);
-  try { fetch(GOOGLE_SHEET_API, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(txnData) }); } catch(e) {}
+
+  set(ref(db, `users/${currentUser.uid}/transactions/${txnID}`), txnData).catch(()=>{});
+
+  try {
+    fetch(GOOGLE_SHEET_API, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(txnData)
+    });
+  } catch(e) {}
+
   sendAdminTelegramAlert(txnData, uploadedReceiptFile);
+
   pageDeposit.classList.remove('active');
   pageHistory.classList.add('active');
   switchDock.style.display = 'none';
@@ -683,7 +943,12 @@ window.submitFinalDeposit = async function() {
   checkStep1Validation();
 };
 
-document.getElementById('btnConfirmSuccess').addEventListener('click', () => { document.getElementById('pageSuccess').classList.remove('active'); pageHistory.classList.add('active'); switchDock.style.display = 'none'; });
+document.getElementById('btnConfirmSuccess')?.addEventListener('click', () => {
+  document.getElementById('pageSuccess').classList.remove('active');
+  pageHistory.classList.add('active');
+  switchDock.style.display = 'none';
+});
+
 const wallet = document.getElementById('wallet');
 wallet.addEventListener('click', () => { wallet.classList.toggle('open'); });
 
@@ -724,8 +989,11 @@ slidingPill.style.transform = 'translateX(0%)';
 
 window.selectTab = function(tab) {
   pageHistory.classList.remove('active'); pageDeposit.classList.remove('active'); pageInterest.classList.remove('active'); pageLoan.classList.remove('active');
+  if (pageLoanPersonalInfo) pageLoanPersonalInfo.classList.remove('active');
   if (pageGuarantor) pageGuarantor.classList.remove('active');
   if (pageLoanReview) pageLoanReview.classList.remove('active');
+  if (pageLoanHistory) pageLoanHistory.classList.remove('active');
+  if (pageLoanSuccess) pageLoanSuccess.classList.remove('active');
   switchDock.style.display = 'flex';
   if (tab === 'home') {
     slidingPill.style.transform = 'translateX(0%)';
