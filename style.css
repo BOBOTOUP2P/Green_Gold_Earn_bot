@@ -128,13 +128,17 @@ html,body{width:100%;min-height:100vh;background-color:#000000;color:#ffffff;ove
 .pro-card-title{font-size:13.5px;color:#d1d1d6;font-weight:600;}
 .pro-card-title-sub{font-size:13px;color:#8e8e96;font-weight:500;margin-bottom:8px;}
 .pro-balance-tag{font-size:12.5px;color:#00bcd4;font-weight:700;}
-.pro-remain-loan-tag{font-size:12.5px;color:#eab308;font-weight:700;margin-bottom:6px;text-align:right;}
 
-/* ប៊ូតុង iPhone Switch ផ្នែកសងប្រាក់ */
-.repay-switch-label-title{font-size:13.5px;color:#d1d1d6;font-weight:600;margin-bottom:6px;}
-.repay-ios-switch-wrapper{display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px;}
-.repay-ios-switch-wrapper .ios-switch{opacity:1;cursor:pointer;pointer-events:auto;}
-.repay-ios-switch-wrapper .ios-switch.active{background-color:#00bcd4;box-shadow:0 0 10px rgba(0,188,212,0.5);}
+/* ប្លង់ផ្នែកសងប្រាក់ថ្មី */
+.repay-top-balance-bar{display:flex;justify-content:flex-end;width:100%;margin-bottom:6px;}
+.repay-mid-control-row{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:8px;}
+.repay-switch-combo{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+.repay-combo-title{font-size:12px;color:#d1d1d6;font-weight:600;}
+.repay-remain-tag{font-size:12px;color:#ef4444;font-weight:700;text-align:right;}
+.repay-remain-tag span{color:#ffffff;}
+
+.repay-mid-control-row .ios-switch{opacity:1;cursor:pointer;pointer-events:auto;}
+.repay-mid-control-row .ios-switch.active{background-color:#00bcd4;box-shadow:0 0 10px rgba(0,188,212,0.5);}
 
 .pro-input-split-row{display:flex;align-items:center;justify-content:space-between;width:100%;padding:4px 0 10px 0;}
 .ios-switch-container{display:flex;align-items:center;justify-content:flex-start;}
