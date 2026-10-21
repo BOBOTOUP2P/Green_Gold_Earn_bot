@@ -393,27 +393,21 @@
     <!-- ផ្នែកសងប្រាក់ (Repay Section) -->
     <div id="loanRepaySection" class="loan-section">
       <div class="pro-card">
-        <!-- ជួរខាងលើ៖ សមតុល្យគណនី នៅខាងលើប្រាក់កម្ចីមិនទាន់សងសរុប -->
-        <div class="repay-top-balance-bar">
-          <span class="pro-balance-tag" style="font-size: 13.5px;">សមតុល្យគណនី: <span id="repayUserBalanceTopText">0.00 USD</span></span>
-        </div>
-
-        <!-- ជួរកណ្ដាលផ្ដេក៖ ខ្ញុំចង់សង ទាំងអស់/ម្ដងបន្តិចៗ (ប៊ូតុង iPhone) នៅឆ្វេង និង ប្រាក់កម្ចីមិនទាន់សងសរុប នៅស្ដាំ -->
-        <div class="repay-mid-control-row">
-          <div class="repay-switch-combo">
-            <span class="repay-combo-title">ខ្ញុំចង់សង ទាំងអស់ / ម្ដងបន្តិចៗ</span>
-            <div class="ios-switch" id="repayIosToggleSwitch" onclick="toggleRepayPartSwitch()">
-              <div class="ios-switch-knob"></div>
-            </div>
-          </div>
-          <div class="repay-remain-tag">
-            ប្រាក់កម្ចីមិនទាន់សងសរុប: <span id="remainLoanTotalText">0.00 USD</span>
+        <!-- ជួរអក្សរ ខ្ញុំចង់សង ទាំងអស់ / ម្ដងបន្តិចៗ -->
+        <div class="repay-switch-label-title">ខ្ញុំចង់សង ទាំងអស់ / ម្ដងបន្តិចៗ</div>
+        
+        <!-- ប៊ូតុងបិទបើកដូច iPhone នៅខាងក្រោមអក្សរ -->
+        <div class="repay-ios-switch-wrapper">
+          <div class="ios-switch" id="repayIosToggleSwitch" onclick="toggleRepayPartSwitch()">
+            <div class="ios-switch-knob"></div>
           </div>
         </div>
 
-        <!-- ជួរប្រអប់វាយចំនួនទឹកប្រាក់សង -->
+        <div class="pro-remain-loan-tag">ប្រាក់កម្ចីនៅសល់សរុប: <span id="remainLoanTotalText">0.00 USD</span></div>
+
         <div class="pro-input-row" style="padding-bottom: 4px;">
           <span class="pro-input-sym" style="color: #00bcd4;">$</span>
+          <!-- placeholder="0.00" ជាស្រមោល មិនបាច់លុបទេ -->
           <input type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" id="repayAmountInput" placeholder="0.00" oninput="handleRepayAmountInput(this)">
         </div>
 
@@ -428,8 +422,9 @@
         </div>
       </div>
 
-      <!-- ផ្នែកកាលបរិច្ឆេទសងប្រាក់ -->
+      <!-- ផ្នែកកាលបរិច្ឆេទសងប្រាក់៖ ប្រអប់ពណ៌ក្រហម (ថ្ងៃបានកំណត់) + ប្រអប់ទឹកសមុទ្រ (ថ្ងៃបន្ទាប់ពេលបើក Switch) -->
       <div id="repayDatesContainer" style="display:flex; flex-direction:column; gap:10px; width:100%;">
+        <!-- ប្រអប់ពណ៌ក្រហម -->
         <div class="pro-card pro-card-red-tint">
           <div class="pro-card-title-sub" id="repaySetDateLabel">ថ្ងៃ/ខែ/ឆ្នាំ បានកំណត់ នៃការសងប្រាក់</div>
           <div class="pro-auto-date-locked">
@@ -441,6 +436,7 @@
           </div>
         </div>
 
+        <!-- បង្ហាញបន្ថែមពេលបើក Switch សងម្ដងបន្តិចៗ -->
         <div id="repayNextDateBlock" style="display:none; flex-direction:column; gap:10px; width:100%;">
           <div class="pro-arrow-down-divider">
             <svg viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
