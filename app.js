@@ -291,15 +291,15 @@ function renderLoanHistory(loans) {
         <div class="trans-icon-box loan-icon-box">
           <svg class="mini-wallet-anim-svg" viewBox="0 0 32 32">
             <g class="mw-bill">
-              <rect x="7" y="5" width="18" height="9" rx="2" fill="#0e0e12" stroke="#ffffff" stroke-width="1.3"/>
-              <text x="16" y="12" font-size="7" font-weight="900" fill="#ffffff" text-anchor="middle">$</text>
+              <rect x="7" y="6" width="18" height="8" rx="2" fill="#0e0e12" stroke="#ffffff" stroke-width="0.8"/>
+              <text x="16" y="12.5" font-size="6.5" font-weight="900" fill="#ffffff" text-anchor="middle">$</text>
             </g>
-            <rect x="4" y="11" width="24" height="17" rx="3.5" fill="#08080b" stroke="#ffffff" stroke-width="1.4"/>
-            <path d="M 4 14 L 28 14 L 28 25 C 28 26.5 26.5 28 25 28 L 7 28 C 5.5 28 4 26.5 4 25 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="1.3"/>
-            <path d="M 6 16 L 26 16" stroke="#71717a" stroke-width="1.2" stroke-dasharray="2,1.5"/>
+            <rect x="4" y="11" width="24" height="17" rx="3.5" fill="#08080b" stroke="#ffffff" stroke-width="0.8"/>
+            <path d="M 4 14 L 28 14 L 28 25 C 28 26.5 26.5 28 25 28 L 7 28 C 5.5 28 4 26.5 4 25 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="0.8"/>
+            <path d="M 6 16 L 26 16" stroke="#ffffff" stroke-width="0.7" stroke-dasharray="2,1.5" opacity="0.6"/>
             <g class="mw-flap">
-              <path d="M 20 14 L 28 14 C 29.5 14 30 16 30 18.5 C 30 21 29.5 23 28 23 L 20 23 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="1.3"/>
-              <circle cx="26" cy="18.5" r="2.2" fill="#ffffff"/>
+              <path d="M 20 14 L 28 14 C 29.5 14 30 16 30 18.5 C 30 21 29.5 23 28 23 L 20 23 Z" fill="#0b0b0f" stroke="#ffffff" stroke-width="0.8"/>
+              <circle cx="26" cy="18.5" r="2.2" fill="#00bcd4"/>
             </g>
           </svg>
         </div>
