@@ -65,9 +65,18 @@ function calculateTierGuarantorCount(amt, ruleStr) {
   return 4;
 }
 
+window.openContactTelegram = function() {
+  const link = CONFIG.telegramLink || "https://t.me/";
+  if (window.Telegram?.WebApp?.openTelegramLink && link.includes("t.me")) {
+    window.Telegram.WebApp.openTelegramLink(link);
+  } else {
+    window.open(link, "_blank");
+  }
+};
+
 function renderCompanyUI() {
   const logoEl = document.getElementById('companyLogoBadge'), nameEl = document.getElementById('companyNameText');
-  const qrMerchantEl = document.querySelector('.khqr-merchant');
+  const qrMerchantEl = document.getElementById('depositKhqrMerchant') || document.querySelector('.khqr-merchant');
   if (logoEl) logoEl.innerHTML = `<img src="${CONFIG.companyLogo}" alt="Company">`;
   if (nameEl) nameEl.innerText = CONFIG.companyName;
   if (qrMerchantEl) qrMerchantEl.innerText = CONFIG.qrMerchantName || "BOBOTOU TOPUP";
