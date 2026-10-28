@@ -12,6 +12,8 @@ let CONFIG = {
   qrMerchantName: savedConfig.qrMerchantName || "BOBOTOU TOPUP", 
   repayQrMerchantName: savedConfig.repayQrMerchantName || "BOBOTOU REPAY",
   guarantorTierRule: savedConfig.guarantorTierRule || "10-100:2, 101-500:4, 501-1000:6",
+  maxRepayLimit: savedConfig.maxRepayLimit || "3",
+  maxBorrowLimit: savedConfig.maxBorrowLimit || "1",
   borrowInterestRate: savedConfig.borrowInterestRate || "1.00%", 
   borrowAdminFeeRule: savedConfig.borrowAdminFeeRule || "10-100:0.50, 101-500:1.00, 501-1000:2.00", 
   borrowInterestLabel: savedConfig.borrowInterestLabel || "ថ្លៃការប្រាក់",
@@ -184,14 +186,28 @@ function hasPendingDeposit() {
   return Object.values(currentUser.transactions).some(t => (t.status || '').toLowerCase() === 'pending…');
 }
 
-function hasPendingLoan(type = 'borrow') {
+function hasAnyPendingLoan() {
   if (!currentUser.loans) return false;
-  return Object.values(currentUser.loans).some(l => {
-    const isP = (l.status || '').toLowerCase() === 'pending…';
-    const isR = (l.type === 'repay' || l.id.indexOf('REPAY') === 0);
-    return isP && (type === 'repay' ? isR : !isR);
-  });
+  return Object.values(currentUser.loans).some(l => (l.status || '').toLowerCase() === 'pending…');
 }
+
+function hasReachedBorrowLimit() {
+  const curBorrowCount = currentUser.borrowCount || 0;
+  const maxBorrow = parseInt(CONFIG.maxBorrowLimit, 10) || 1;
+  const remainLoan = currentUser.remainLoan || 0;
+  return remainLoan > 0 && curBorrowCount >= maxBorrow;
+}
+
+window.openBorrowBlockedModal = function() {
+  const modal = document.getElementById('borrowBlockedModal');
+  if (modal) modal.classList.add('active');
+  lucide.createIcons();
+};
+
+window.closeBorrowBlockedModal = function() {
+  const modal = document.getElementById('borrowBlockedModal');
+  if (modal) modal.classList.remove('active');
+};
 
 function getFormattedDateTime(d = new Date()) {
   const day = String(d.getDate()).padStart(2, '0'), mon = String(d.getMonth() + 1).padStart(2, '0'), yr = d.getFullYear(), hr = String(d.getHours()).padStart(2, '0'), min = String(d.getMinutes()).padStart(2, '0');
@@ -233,7 +249,7 @@ startLoading();
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.expand(); tg.ready(); }
 const tgUser = tg?.initDataUnsafe?.user;
-let currentUser = { name: "(…)", uid: "", photo: "", totalDeposits: 0, baseBalance: 0.00, totalInterestVal: 0.00, totalRateSummary: "+0.00%", balance: 0.00, remainLoan: 0.00, loanDueDate: "", maxPeak: 0.00, transactions: {}, interests: {}, loans: {} };
+let currentUser = { name: "(…)", uid: "", photo: "", totalDeposits: 0, baseBalance: 0.00, totalInterestVal: 0.00, totalRateSummary: "+0.00%", balance: 0.00, remainLoan: 0.00, repayCount: 0, borrowCount: 0, loanDueDate: "", maxPeak: 0.00, transactions: {}, interests: {}, loans: {} };
 
 if (tgUser && tgUser.id) {
   currentUser.name = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || "(…)";
@@ -499,7 +515,7 @@ async function syncUserToDatabase() {
   try {
     const userRef = ref(db, 'users/' + currentUser.uid), snapshot = await get(userRef);
     if (!snapshot.exists()) {
-      await set(userRef, { name: currentUser.name, uid: currentUser.uid, photo: currentUser.photo, totalDeposits: 0, baseBalance: 0.00, balance: 0.00, remainLoan: 0.00, loanDueDate: "", totalInterestVal: 0.00, totalRateSummary: "+0.00%", maxPeak: 0.00, transactions: {}, interests: {}, loans: {}, createdAt: Date.now() });
+      await set(userRef, { name: currentUser.name, uid: currentUser.uid, photo: currentUser.photo, totalDeposits: 0, baseBalance: 0.00, balance: 0.00, remainLoan: 0.00, repayCount: 0, borrowCount: 0, loanDueDate: "", totalInterestVal: 0.00, totalRateSummary: "+0.00%", maxPeak: 0.00, transactions: {}, interests: {}, loans: {}, createdAt: Date.now() });
       syncUserToSheetUI();
     } else {
       updateUIFromData(snapshot.val());
@@ -542,6 +558,8 @@ function updateUIFromData(data) {
   currentUser.totalRateSummary = data.totalRateSummary || "+0.00%";
   currentUser.balance = data.balance !== undefined ? Number(data.balance) : (currentUser.baseBalance + currentUser.totalInterestVal);
   currentUser.remainLoan = data.remainLoan !== undefined ? Number(data.remainLoan) : 0.00;
+  currentUser.repayCount = data.repayCount !== undefined ? Number(data.repayCount) : 0;
+  currentUser.borrowCount = data.borrowCount !== undefined ? Number(data.borrowCount) : 0;
   currentUser.loanDueDate = data.loanDueDate || "";
   currentUser.maxPeak = data.maxPeak !== undefined ? Number(data.maxPeak) : (currentUser.maxPeak || currentUser.balance);
   currentUser.transactions = data.transactions || {};
@@ -629,7 +647,7 @@ window.checkStep1Validation = function() {
   const btn = document.getElementById('btnConfirmDeposit'), sender = document.getElementById('senderAccountName').value.trim();
   if (hasPendingDeposit()) { btn.classList.add('disabled'); btn.innerText = "កំពុងមានសំណើរត្រួតពិនិត្យ..."; return; }
   btn.innerText = "ស្កេនទូទាត់ប្រាក់";
-  btn.classList.toggle('disabled', !(currentDepositAmount > 0 && selectedBankName !== "" && sender !== ""));
+  btn.classList.toggle('disabled', !(currentDepositAmount >= 10 && selectedBankName !== "" && sender !== ""));
 };
 
 window.openBankModal = function() { document.getElementById('bankModal').classList.add('active'); };
@@ -686,20 +704,38 @@ const pageAssets = document.getElementById('pageAssets'), pageDeposit = document
 function checkLoanStep1Validation() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
   const btn = document.getElementById('btnLoanStep1Next');
-  if (hasPendingLoan('borrow')) {
+  if (hasAnyPendingLoan()) {
     btn.classList.add('disabled');
     btn.innerText = "កំពុងមានសំណើរត្រួតពិនិត្យ...";
     return;
   }
   btn.innerText = "បន្ត";
-  btn.classList.toggle('disabled', !(amt > 0 && selectedKhmerRepayDate));
+  btn.classList.toggle('disabled', !(amt >= 10 && selectedKhmerRepayDate));
 }
+
+window.handleBorrowStep1Click = function() {
+  if (hasReachedBorrowLimit()) {
+    openBorrowBlockedModal();
+    return;
+  }
+  goToLoanPersonalInfoPage();
+};
 
 window.handleLoanAmountInput = function(input) {
   input.value = input.value.replace(/[^0-9.]/g, '');
   const parts = input.value.split('.');
   if (parts.length > 2) input.value = parts[0] + '.' + parts.slice(1).join('');
   const val = parseFloat(input.value) || 0;
+  
+  const symEl = document.getElementById('borrowInputDollarSym');
+  if (input.value !== '' && val < 10) {
+    input.classList.add('pro-input-below-min');
+    if (symEl) symEl.classList.add('pro-input-below-min');
+  } else {
+    input.classList.remove('pro-input-below-min');
+    if (symEl) symEl.classList.remove('pro-input-below-min');
+  }
+
   const rateNum = (parseFloat(CONFIG.borrowInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(val, CONFIG.borrowAdminFeeRule);
   document.getElementById('borrowRateDisplay').innerText = `${CONFIG.borrowInterestLabel || 'ថ្លៃការប្រាក់'}: ${CONFIG.borrowInterestRate || '1.00%'}`;
@@ -715,8 +751,28 @@ window.handleLoanAmountInput = function(input) {
 window.handleRepayAmountInput = function(input) {
   if (input) {
     input.value = input.value.replace(/[^0-9.]/g, '');
+    const parts = input.value.split('.');
+    if (parts.length > 2) input.value = parts[0] + '.' + parts.slice(1).join('');
+    
+    const maxLoan = currentUser.remainLoan || 0;
+    if (isRepayPartSwitchOn && maxLoan > 0) {
+      let curVal = parseFloat(input.value) || 0;
+      if (curVal > maxLoan) {
+        input.value = maxLoan.toFixed(2);
+      }
+    }
   }
   const val = parseFloat(input ? input.value : 0) || 0;
+  
+  const symEl = document.getElementById('repayInputDollarSym');
+  if (input && input.value !== '' && val < 10) {
+    input.classList.add('pro-input-below-min');
+    if (symEl) symEl.classList.add('pro-input-below-min');
+  } else if (input) {
+    input.classList.remove('pro-input-below-min');
+    if (symEl) symEl.classList.remove('pro-input-below-min');
+  }
+
   const rateNum = (parseFloat(CONFIG.repayInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(val, CONFIG.repayAdminFeeRule);
   document.getElementById('repayRateDisplay').innerText = `${CONFIG.repayInterestLabel || 'ថ្លៃការប្រាក់'}: ${CONFIG.repayInterestRate || '1.00%'}`;
@@ -728,7 +784,7 @@ window.handleRepayAmountInput = function(input) {
   const remainLoan = currentUser.remainLoan || 0;
   if (btn) {
     btn.classList.remove('btn-no-loan');
-    if (hasPendingLoan('repay')) {
+    if (hasAnyPendingLoan()) {
       btn.classList.add('disabled');
       btn.innerText = "កំពុងមានសំណើរត្រួតពិនិត្យ...";
     } else if (remainLoan <= 0) {
@@ -737,7 +793,7 @@ window.handleRepayAmountInput = function(input) {
       btn.innerText = "មិនមានកម្ចីណាមួយឡើយ";
     } else {
       btn.innerText = "បន្ត";
-      btn.classList.toggle('disabled', val <= 0);
+      btn.classList.toggle('disabled', val < 10);
     }
   }
 };
@@ -760,15 +816,29 @@ window.handleRepayStep1Click = function() {
 };
 
 window.toggleRepayPartSwitch = function() {
+  const currentCount = currentUser.repayCount || 0;
+  const maxLimit = parseInt(CONFIG.maxRepayLimit, 10) || 3;
+  const isFinalRepay = (currentCount + 1) >= maxLimit;
+
   isRepayPartSwitchOn = !isRepayPartSwitchOn;
   const sw = document.getElementById('repayIosToggleSwitch'), repayInput = document.getElementById('repayAmountInput'), nextDateBlock = document.getElementById('repayNextDateBlock'), setDateLabel = document.getElementById('repaySetDateLabel'), fixedDateText = document.getElementById('repayFixedDueDateText');
+  
   if (isRepayPartSwitchOn) {
     sw.classList.add('active');
-    nextDateBlock.style.display = 'flex';
-    setDateLabel.innerText = "ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន";
-    fixedDateText.innerText = formatKhmerDateFull(new Date());
-    repayInput.readOnly = false;
-    repayInput.value = '';
+    if (isFinalRepay) {
+      nextDateBlock.style.display = 'none';
+      setDateLabel.innerText = "ថ្ងៃ/ខែ/ឆ្នាំ បានកំណត់ នៃការសងប្រាក់";
+      fixedDateText.innerText = currentUser.loanDueDate || "--/--/----";
+      const totalLoan = currentUser.remainLoan || 0;
+      repayInput.value = totalLoan > 0 ? totalLoan.toFixed(2) : '';
+      repayInput.readOnly = true;
+    } else {
+      nextDateBlock.style.display = 'flex';
+      setDateLabel.innerText = "ថ្ងៃ/ខែ/ឆ្នាំ បច្ចុប្បន្ន";
+      fixedDateText.innerText = formatKhmerDateFull(new Date());
+      repayInput.readOnly = false;
+      repayInput.value = '';
+    }
     handleRepayAmountInput(repayInput);
     openRepayCheckNoteModal();
   } else {
@@ -952,7 +1022,7 @@ window.switchLoanTab = function(type) {
 
 window.goToLoanPersonalInfoPage = function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
-  if (amt <= 0 || !selectedKhmerRepayDate || hasPendingLoan('borrow')) return;
+  if (amt < 10 || !selectedKhmerRepayDate || hasAnyPendingLoan()) return;
   pageLoan.classList.remove('active');
   pageLoanPersonalInfo.classList.add('active');
   checkLoanPersonalInfoValidation();
@@ -980,7 +1050,7 @@ window.handleLoanReceiverReceiptUpload = function(input) {
 
 window.goToRepayPersonalInfoPage = function() {
   const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
-  if (amt <= 0 || hasPendingLoan('repay')) return;
+  if (amt < 10 || hasAnyPendingLoan()) return;
   pageLoan.classList.remove('active');
   pageRepayPersonalInfo.classList.add('active');
   checkRepayPersonalInfoValidation();
@@ -1004,12 +1074,17 @@ window.checkRepayPersonalInfoValidation = function() {
 
 window.goToRepayReviewConfirmPage = function() {
   const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
-  if (amt <= 0 || selectedRepayBankName === "") return;
+  if (amt < 10 || selectedRepayBankName === "") return;
   const rateNum = (parseFloat(CONFIG.repayInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(amt, CONFIG.repayAdminFeeRule);
   const totalPay = amt > 0 ? (amt + (amt * rateNum) + adminFee) : 0;
   const senderAccName = document.getElementById('repaySenderBankNameInput').value.trim() || '...';
-  const nextDueDateKh = (isRepayPartSwitchOn && selectedKhmerNextRepayDate) ? formatKhmerDateFull(selectedKhmerNextRepayDate) : (currentUser.loanDueDate || '--/--/----');
+  
+  const currentCount = currentUser.repayCount || 0;
+  const maxLimit = parseInt(CONFIG.maxRepayLimit, 10) || 3;
+  const isFinalRepay = (currentCount + 1) >= maxLimit;
+
+  const nextDueDateKh = (isRepayPartSwitchOn && !isFinalRepay && selectedKhmerNextRepayDate) ? formatKhmerDateFull(selectedKhmerNextRepayDate) : (currentUser.loanDueDate || '--/--/----');
 
   document.getElementById('repayConfirmBigAmount').innerText = "$" + amt.toFixed(2);
   document.getElementById('rvRepayBank').innerText = selectedRepayBankName;
@@ -1023,7 +1098,7 @@ window.goToRepayReviewConfirmPage = function() {
   document.getElementById('rvRepayNextDueDate').innerText = nextDueDateKh;
 
   const nextDateRow = document.getElementById('rvRepayNextDueDateRow');
-  if (nextDateRow) nextDateRow.style.display = isRepayPartSwitchOn ? 'flex' : 'none';
+  if (nextDateRow) nextDateRow.style.display = (isRepayPartSwitchOn && !isFinalRepay) ? 'flex' : 'none';
 
   pageRepayPersonalInfo.classList.remove('active');
   pageRepayReviewConfirm.classList.add('active');
@@ -1037,7 +1112,7 @@ window.backToRepayPersonalInfoFromConfirm = function() {
 
 window.goToRepayKHQRPage = function() {
   const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
-  if (amt <= 0) return;
+  if (amt < 10) return;
   const rateNum = (parseFloat(CONFIG.repayInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(amt, CONFIG.repayAdminFeeRule);
   const totalPay = amt > 0 ? (amt + (amt * rateNum) + adminFee) : 0;
@@ -1071,12 +1146,17 @@ window.handleRepayReceiptUpload = function(input) {
 };
 
 window.submitFinalRepayRequest = function() {
-  if (!repayReceiptFile || hasPendingLoan('repay')) return;
+  if (!repayReceiptFile || hasAnyPendingLoan()) return;
   const amt = parseFloat(document.getElementById('repayAmountInput').value) || 0;
   const rateNum = (parseFloat(CONFIG.repayInterestRate) || 1.00) / 100;
   const adminFee = calculateTierAdminFee(amt, CONFIG.repayAdminFeeRule);
   const totalPay = amt > 0 ? (amt + (amt * rateNum) + adminFee) : 0;
-  const nextDueDateKh = (isRepayPartSwitchOn && selectedKhmerNextRepayDate) ? formatKhmerDateFull(selectedKhmerNextRepayDate) : (currentUser.loanDueDate || '');
+
+  const currentCount = currentUser.repayCount || 0;
+  const maxLimit = parseInt(CONFIG.maxRepayLimit, 10) || 3;
+  const isFinalRepay = (currentCount + 1) >= maxLimit;
+
+  const nextDueDateKh = (isRepayPartSwitchOn && !isFinalRepay && selectedKhmerNextRepayDate) ? formatKhmerDateFull(selectedKhmerNextRepayDate) : (currentUser.loanDueDate || '');
   const nowStr = getFormattedDateTime();
   const repayId = 'REPAY-' + Math.floor(1000000 + Math.random() * 9000000);
   const senderAccName = document.getElementById('repaySenderBankNameInput').value.trim() || '...';
@@ -1153,7 +1233,7 @@ function renderGuarantorInputsUI(count) {
 
 window.goToLoanGuarantorPage = function() {
   const amt = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
-  if (amt <= 0 || !selectedKhmerRepayDate) return;
+  if (amt < 10 || !selectedKhmerRepayDate) return;
   
   currentRequiredGuarantorCount = calculateTierGuarantorCount(amt, CONFIG.guarantorTierRule);
   renderGuarantorInputsUI(currentRequiredGuarantorCount);
@@ -1203,7 +1283,7 @@ window.checkGuarantorStepValidation = function() {
   const btn = document.getElementById('btnGuarantorNext');
   if (!btn) return;
   
-  if (hasPendingLoan('borrow')) {
+  if (hasAnyPendingLoan()) {
     btn.classList.add('disabled');
     btn.innerText = "កំពុងមានសំណើរត្រួតពិនិត្យ...";
     return;
@@ -1277,7 +1357,7 @@ window.goToLoanReviewPage = function() {
 window.backToGuarantorPage = function() { pageLoanReview.classList.remove('active'); pageGuarantor.classList.add('active'); };
 
 window.submitFinalLoanRequest = function() {
-  if (hasPendingLoan('borrow')) return;
+  if (hasAnyPendingLoan() || hasReachedBorrowLimit()) return;
   const btn = document.getElementById('btnSubmitFinalLoan');
   if (btn) btn.disabled = true;
 
