@@ -87,8 +87,22 @@ function renderCompanyUI() {
   const bRateEl = document.getElementById('borrowRateDisplay');
   if (bRateEl) bRateEl.innerText = `${CONFIG.borrowInterestLabel || 'ថ្លៃការប្រាក់'}: ${CONFIG.borrowInterestRate || '1.00%'}`;
   
+  const bAdminEl = document.getElementById('borrowAdminFeeDisplay');
+  if (bAdminEl) {
+    const curVal = parseFloat(document.getElementById('borrowAmountInput')?.value) || 0;
+    const adminFee = calculateTierAdminFee(curVal, CONFIG.borrowAdminFeeRule);
+    bAdminEl.innerText = `${CONFIG.borrowAdminFeeLabel || 'ថ្លៃរដ្ឋបាល'}: ${adminFee.toFixed(2)} USD`;
+  }
+
   const rRateEl = document.getElementById('repayRateDisplay');
   if (rRateEl) rRateEl.innerText = `${CONFIG.repayInterestLabel || 'ថ្លៃការប្រាក់'}: ${CONFIG.repayInterestRate || '1.00%'}`;
+
+  const rAdminEl = document.getElementById('repayAdminFeeDisplay');
+  if (rAdminEl) {
+    const curRVal = parseFloat(document.getElementById('repayAmountInput')?.value) || 0;
+    const rAdminFee = calculateTierAdminFee(curRVal, CONFIG.repayAdminFeeRule);
+    rAdminEl.innerText = `${CONFIG.repayAdminFeeLabel || 'ថ្លៃរដ្ឋបាល'}: ${rAdminFee.toFixed(2)} USD`;
+  }
   
   const rvBorrowRate = document.getElementById('rvBorrowRate');
   if (rvBorrowRate) rvBorrowRate.innerText = CONFIG.borrowInterestRate || '1.00%';
@@ -1103,7 +1117,7 @@ window.goToRepayReviewConfirmPage = function() {
   document.getElementById('rvRepayAmt').innerText = amt.toFixed(2) + " USD";
   document.getElementById('rvRepayRate').innerText = CONFIG.repayInterestRate || "1.00%";
   document.getElementById('rvRepayAdminFee').innerText = adminFee.toFixed(2) + " USD";
-  document.getElementById('rvRepayTotalPay').innerText = totalPay.toFixed(2) + " USD";
+  document.getElementById('rvTotalPay').innerText = totalPay.toFixed(2) + " USD";
   document.getElementById('rvRepayNextDueDate').innerText = nextDueDateKh;
 
   const nextDateRow = document.getElementById('rvRepayNextDueDateRow');
