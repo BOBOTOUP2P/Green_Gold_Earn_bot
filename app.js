@@ -1179,6 +1179,7 @@ window.submitFinalRepayRequest = function() {
   const nowStr = getFormattedDateTime();
   const repayId = 'REPAY-' + Math.floor(1000000 + Math.random() * 9000000);
   const senderAccName = document.getElementById('repaySenderBankNameInput').value.trim() || '...';
+  const remainAfter = Math.max(0, (currentUser.remainLoan || 0) - amt);
 
   const loanItem = {
     id: repayId,
@@ -1189,6 +1190,7 @@ window.submitFinalRepayRequest = function() {
     receiverAccountName: senderAccName,
     balance: currentUser.balance.toFixed(2) + " USD",
     remainLoan: (currentUser.remainLoan || 0).toFixed(2) + " USD",
+    remainLoanAfter: remainAfter.toFixed(2) + " USD",
     borrowAmount: amt.toFixed(2) + " USD",
     guarantorsSummary: 'សងប្រាក់',
     interestRate: CONFIG.repayInterestRate || "1.00%",
@@ -1389,6 +1391,7 @@ window.submitFinalLoanRequest = function() {
   const nowStr = getFormattedDateTime();
   const loanId = 'LOAN-' + Math.floor(1000000 + Math.random() * 9000000);
   const receiverAccName = document.getElementById('loanReceiverBankNameInput').value.trim() || '...';
+  const remainAfterBorrow = (currentUser.remainLoan || 0) + amt;
 
   let gList = [];
   for (let i = 0; i < currentRequiredGuarantorCount; i++) {
@@ -1407,6 +1410,7 @@ window.submitFinalLoanRequest = function() {
     receiverAccountName: receiverAccName,
     balance: currentUser.balance.toFixed(2) + " USD",
     remainLoan: (currentUser.remainLoan || 0).toFixed(2) + " USD",
+    remainLoanAfter: remainAfterBorrow.toFixed(2) + " USD",
     borrowAmount: amt.toFixed(2) + " USD",
     guarantorsSummary: guarantorsSummary,
     interestRate: CONFIG.borrowInterestRate || "1.00%",
